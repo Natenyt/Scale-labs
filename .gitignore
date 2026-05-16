@@ -1,0 +1,35 @@
+# Legacy prototype (not part of Scale Labs app)
+10x/
+
+# Dependencies
+node_modules/
+
+# Python
+backend/.venv/
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/.pytest_cache/
+backend/*.egg-info/
+
+# Secrets & local env
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env.local
+
+# Local databases
+backend/*.sqlite3
+backend/db.sqlite3
+
+# Next.js (see also frontend/.gitignore)
+frontend/.next/
+frontend/out/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.log
+
+# Cursor local workspace state (keep rules/skills elsewhere if needed)
+.cursor/projects/

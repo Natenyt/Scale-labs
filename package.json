@@ -1,0 +1,12 @@
+{
+  "name": "scale-labs",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail -n django,next -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "node scripts/run-backend.js",
+    "dev:frontend": "npm run dev --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
