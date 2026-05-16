@@ -19,8 +19,9 @@ backend/.env
 frontend/.env.local
 
 # Local databases
-backend/*.sqlite3
+**/*.sqlite3
 backend/db.sqlite3
+frontend/db.sqlite3
 
 # Next.js (see also frontend/.gitignore)
 frontend/.next/
