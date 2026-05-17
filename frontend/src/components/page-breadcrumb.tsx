@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
+import { useNavActivePath } from "@/components/navigation/navigation-pending";
 import { useIntegrations } from "@/components/integrations/integrations-store";
 import {
   Breadcrumb,
@@ -29,7 +29,7 @@ const SECTIONS: Record<string, { group: string; title: string; href: string }> =
 };
 
 export function PageBreadcrumb() {
-  const pathname = usePathname() ?? "/dashboard";
+  const pathname = useNavActivePath() || "/dashboard";
   const { byId: byIntegrationId } = useIntegrations();
   const { byId: byWorkflowId } = useWorkflows();
 
@@ -45,6 +45,12 @@ export function PageBreadcrumb() {
   const workflowDetailMatch = pathname.match(/^\/workflow\/([^/]+)$/);
   const workflowId = workflowDetailMatch?.[1];
   const workflow = workflowId ? byWorkflowId(workflowId) : undefined;
+
+  const callLogDetailMatch = pathname.match(/^\/logs\/([^/]+)$/);
+  const callLogId = callLogDetailMatch?.[1];
+
+  const phoneDetailMatch = pathname.match(/^\/phone-numbers\/([^/]+)$/);
+  const phoneDetailId = phoneDetailMatch?.[1];
 
   const exact = SECTIONS[pathname];
   const fallback =
@@ -81,6 +87,30 @@ export function PageBreadcrumb() {
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbPage>{workflow?.name ?? "Workflow"}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        ) : callLogId ? (
+          <>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/logs">Logs</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Call detail</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        ) : phoneDetailId ? (
+          <>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href="/phone-numbers">Phone numbers</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Manage number</BreadcrumbPage>
             </BreadcrumbItem>
           </>
         ) : notionNewMatch || notionId ? (

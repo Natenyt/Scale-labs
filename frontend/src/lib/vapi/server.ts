@@ -55,10 +55,59 @@ function requireApiKey(): string {
   return key;
 }
 
+function normalizeWebhookUrl(url: string): string {
+  const u = url.trim().replace(/\/$/, "");
+  if (!u) return "";
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  return `https://${u}`;
+}
+
+function isLocalWebhookBase(url: string): boolean {
+  if (!url) return true;
+  try {
+    const host = new URL(normalizeWebhookUrl(url)).hostname.toLowerCase();
+    return (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host === "::1" ||
+      host.endsWith(".local")
+    );
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Public origin Vapi should call for tool webhooks. Prefers an explicit
+ * non-local `VAPI_WEBHOOK_BASE`, then the same ngrok/public URL used by the UI.
+ */
+export function resolveWebhookBase(): string | null {
+  const explicit = normalizeWebhookUrl(process.env.VAPI_WEBHOOK_BASE ?? "");
+  const devPublic = normalizeWebhookUrl(
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+      process.env.NEXT_PUBLIC_DEV_ORIGIN ??
+      "",
+  );
+
+  if (explicit && !isLocalWebhookBase(explicit)) return explicit;
+  if (devPublic && !isLocalWebhookBase(devPublic)) return devPublic;
+  return explicit || devPublic || null;
+}
+
+export class VapiWebhookBaseNotPublicError extends Error {
+  constructor(base: string) {
+    super(
+      `Vapi cannot reach ${base}. Set VAPI_WEBHOOK_BASE to a public https URL, or use ngrok on port 3000 with NEXT_PUBLIC_DEV_ORIGIN / NEXT_PUBLIC_API_BASE_URL.`,
+    );
+    this.name = "VapiWebhookBaseNotPublicError";
+  }
+}
+
 export function requireWebhookBase(): string {
-  const base = process.env.VAPI_WEBHOOK_BASE?.trim();
+  const base = resolveWebhookBase();
   if (!base) throw new VapiWebhookBaseMissingError();
-  return base.replace(/\/$/, "");
+  if (isLocalWebhookBase(base)) throw new VapiWebhookBaseNotPublicError(base);
+  return base;
 }
 
 export function requireSharedSecret(): string {
@@ -233,6 +282,12 @@ export function toVapiRouteError(err: unknown): {
     return {
       status: 412,
       body: { error: err.message, code: "vapi_webhook_base_missing" },
+    };
+  }
+  if (err instanceof VapiWebhookBaseNotPublicError) {
+    return {
+      status: 412,
+      body: { error: err.message, code: "vapi_webhook_base_not_public" },
     };
   }
   if (err instanceof VapiSharedSecretMissingError) {

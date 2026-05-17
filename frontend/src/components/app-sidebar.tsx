@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   LineChart,
   Phone,
-  PhoneCall,
   PlugZap,
   ScrollText,
   Users,
@@ -57,7 +56,6 @@ const data = {
       items: [
         { title: "Integrations", url: "/integrations", icon: PlugZap },
         { title: "Phone Numbers", url: "/phone-numbers", icon: Phone },
-        { title: "Calls", url: "/calls", icon: PhoneCall },
       ],
     },
     {

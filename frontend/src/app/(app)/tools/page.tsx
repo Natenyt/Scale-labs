@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { useIntegrations } from "@/components/integrations/integrations-store";
+import { useCompleteNavigationWhenReady } from "@/components/navigation/navigation-pending";
 import {
   ToolDetailSheet,
   type ToolDetail,
@@ -182,6 +183,8 @@ export default function ToolsPage() {
   const { byKind, ready, setSyncStatus, setVapiTools } = useIntegrations();
   const notionIntegrations = byKind("notion") as NotionIntegration[];
 
+  useCompleteNavigationWhenReady(ready);
+
   const [detail, setDetail] = React.useState<ToolDetail | null>(null);
   const [open, setOpen] = React.useState(false);
 
@@ -196,6 +199,10 @@ export default function ToolsPage() {
     },
     [setSyncStatus, setVapiTools],
   );
+
+  if (!ready) {
+    return null;
+  }
 
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6 pt-2">
@@ -215,7 +222,6 @@ export default function ToolsPage() {
 
       <IntegrationToolsSection
         integrations={notionIntegrations}
-        ready={ready}
         onOpen={(integration, preview, ref) =>
           openDetail({
             kind: "notion",
@@ -305,12 +311,10 @@ function SystemToolsSection({
 
 function IntegrationToolsSection({
   integrations,
-  ready,
   onOpen,
   onResync,
 }: {
   integrations: NotionIntegration[];
-  ready: boolean;
   onOpen: (
     integration: NotionIntegration,
     preview: ToolPreview,
@@ -337,9 +341,7 @@ function IntegrationToolsSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {!ready ? (
-          <div className="border-border/40 h-32 animate-pulse rounded-lg border" />
-        ) : integrations.length === 0 ? (
+        {integrations.length === 0 ? (
           <EmptyIntegrationsState />
         ) : (
           integrations.map((integration, idx) => (

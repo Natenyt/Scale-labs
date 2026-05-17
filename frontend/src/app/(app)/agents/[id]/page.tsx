@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 
-import { useAgents } from "@/components/agents/agents-store";
+import {
+  useAgent,
+  useAgentsActions,
+  useAgentsState,
+} from "@/components/agents/agents-store";
 import { AgentVoiceSessionProvider } from "@/components/agents/detail/voice-session-context";
 import { RightRail } from "@/components/agents/detail/right-rail";
 import { SectionBehavior } from "@/components/agents/detail/section-behavior";
@@ -20,8 +24,9 @@ import type { Agent } from "@/lib/agents/types";
 export default function AgentDetailPage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
-  const { getAgent, updateAgent, ready } = useAgents();
-  const agent = getAgent(id);
+  const { ready } = useAgentsState();
+  const { updateAgent } = useAgentsActions();
+  const agent = useAgent(id);
 
   const onChange = React.useCallback(
     (patch: Partial<Agent>) => {

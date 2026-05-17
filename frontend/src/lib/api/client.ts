@@ -9,6 +9,14 @@ import {
 
 type Json = Record<string, unknown>;
 
+/** Django expects trailing slashes on app routes; Next dev can strip them on proxy. */
+function normalizeApiPath(path: string): string {
+  if (!path.startsWith("/api/v1/")) return path;
+  const [pathname, query] = path.split("?", 2);
+  if (pathname.endsWith("/")) return path;
+  return query ? `${pathname}/?${query}` : `${pathname}/`;
+}
+
 /** Turn DRF `{ detail }` or field errors into a single readable string. */
 export function formatApiErrorMessage(parsed: unknown, statusText: string): string {
   if (!parsed || typeof parsed !== "object") return statusText;
@@ -85,7 +93,8 @@ export async function apiFetch<T = unknown>(
     body = JSON.stringify(init.json);
   }
 
-  const url = path.startsWith("http") ? path : `${base}${path}`;
+  const apiPath = normalizeApiPath(path);
+  const url = apiPath.startsWith("http") ? apiPath : `${base}${apiPath}`;
   let r: Response;
   try {
     r = await fetch(url, { ...init, headers, body });

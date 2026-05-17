@@ -1,5 +1,9 @@
 import { AgentsProvider } from "@/components/agents/agents-store";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { AppMainContent } from "@/components/navigation/app-main-content";
+import { NavigationPendingProvider } from "@/components/navigation/navigation-pending";
+import { AppDataPrefetcher } from "@/components/providers/app-data-prefetcher";
+import { QueryProvider } from "@/components/providers/query-provider";
 import { AppSidebar } from "@/components/app-sidebar";
 import { IntegrationsProvider } from "@/components/integrations/integrations-store";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
@@ -19,9 +23,12 @@ export default function AppLayout({
 }) {
   return (
     <AuthGuard>
+      <QueryProvider>
+      <AppDataPrefetcher />
       <IntegrationsProvider>
         <WorkflowsProvider>
           <AgentsProvider>
+          <NavigationPendingProvider>
           <SidebarProvider>
             <AppSidebar />
             <SidebarInset>
@@ -35,13 +42,17 @@ export default function AppLayout({
                   <PageBreadcrumb />
                 </div>
               </header>
-              <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
+              <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+                <AppMainContent>{children}</AppMainContent>
+              </div>
             </SidebarInset>
           </SidebarProvider>
           <Toaster richColors position="bottom-right" />
+          </NavigationPendingProvider>
           </AgentsProvider>
         </WorkflowsProvider>
       </IntegrationsProvider>
+      </QueryProvider>
     </AuthGuard>
   );
 }

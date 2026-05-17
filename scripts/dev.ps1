@@ -11,4 +11,6 @@ if (-not (Test-Path "node_modules\concurrently")) {
 }
 
 Write-Host "Starting Scale Labs (API http://localhost:8000, UI http://localhost:3000)"
+Write-Host "  ngrok backend:  ngrok http 8000  -> VAPI_WEBHOOK_BASE in backend/.env"
+Write-Host "  ngrok frontend: ngrok http 3000  -> DEV_PUBLIC_ORIGIN / NEXT_PUBLIC_DEV_ORIGIN"
 npm run dev

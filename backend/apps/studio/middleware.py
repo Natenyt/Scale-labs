@@ -1,6 +1,9 @@
+import logging
 from typing import Callable
 
 from django.http import HttpRequest, HttpResponse
+
+logger = logging.getLogger("apps.studio.webhooks")
 
 from apps.accounts.models import Organization, OrganizationMembership
 
@@ -43,3 +46,29 @@ class ActiveOrganizationMiddleware:
 
         request.organization = org  # type: ignore[attr-defined]
         return self.get_response(request)
+
+
+class VapiWebhookRequestLogMiddleware:
+    """Log every request to Vapi webhook paths (visible in runserver console)."""
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        path = request.path or ""
+        if "/webhooks/vapi/" in path:
+            logger.info(
+                "Vapi webhook %s %s (content-length=%s)",
+                request.method,
+                path,
+                request.headers.get("Content-Length", "?"),
+            )
+        response = self.get_response(request)
+        if "/webhooks/vapi/" in path:
+            logger.info(
+                "Vapi webhook %s %s -> %s",
+                request.method,
+                path,
+                response.status_code,
+            )
+        return response

@@ -269,11 +269,6 @@ function attachServer(
       secret: sharedSecret,
       headers: {
         "X-Scale-Labs-Secret": sharedSecret,
-        "X-Integration-Id": integration.id,
-        "X-Tool-Kind": preview.kind,
-        "X-Notion-Token": integration.token,
-        "X-Database-Id": integration.databaseId,
-        "X-Data-Source-Id": integration.dataSourceId,
       },
     },
   };

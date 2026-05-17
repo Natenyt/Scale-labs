@@ -38,6 +38,7 @@ import {
   type WorkflowEdge,
   type WorkflowNode,
 } from "@/lib/workflows/types";
+import { suggestEdgeConditionFromPrompt } from "@/lib/workflows/suggest-edge-condition";
 
 /**
  * Right inspector. Kind-specific form fields edit the currently selected node
@@ -824,9 +825,9 @@ function parseKv(text: string): Record<string, string> | undefined {
 type EdgeConditionMode = "none" | "ai" | "logic";
 
 function inferEdgeMode(condition: string | undefined): EdgeConditionMode {
-  const trimmed = (condition ?? "").trim();
-  if (!trimmed) return "none";
-  return /\{\{[\s\S]*\}\}/.test(trimmed) ? "logic" : "ai";
+  if (condition === undefined) return "none";
+  if (/\{\{[\s\S]*\}\}/.test(condition)) return "logic";
+  return "ai";
 }
 
 export function WorkflowEdgeInspector({
@@ -861,11 +862,12 @@ export function WorkflowEdgeInspector({
       onChange({ condition: stripped });
       return;
     }
-    if (next === "ai" && !edge.condition) {
-      onChange({ condition: "" });
+    if (next === "ai" && edge.condition === undefined) {
+      const suggested = suggestEdgeConditionFromPrompt(fromNode?.systemPrompt);
+      onChange({ condition: suggested ?? "" });
       return;
     }
-    if (next === "logic" && !edge.condition) {
+    if (next === "logic" && edge.condition === undefined) {
       onChange({ condition: "{{  }}" });
       return;
     }
@@ -928,7 +930,8 @@ export function WorkflowEdgeInspector({
               />
               <p className="text-muted-foreground/80 text-[10px]">
                 Natural-language guidance. The LLM picks this edge when the
-                description matches the user&apos;s intent.
+                description matches the user&apos;s intent. Your text appears
+                on the connector (e.g. &quot;user said yes&quot;), like Vapi.
               </p>
             </>
           ) : (

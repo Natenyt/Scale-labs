@@ -1,5 +1,6 @@
 import { applyAgentsHydrate } from "@/lib/agents/hydrate-bridge";
 import { resetIntegrationsStore } from "@/lib/integrations/store";
+import { clearQueryCache } from "@/lib/query/query-client";
 import { resetWorkflowsStore } from "@/lib/workflows/store";
 
 /**
@@ -7,6 +8,7 @@ import { resetWorkflowsStore } from "@/lib/workflows/store";
  * integrations/workflows from localStorage.
  */
 export function clearClientStores(): void {
+  clearQueryCache();
   resetIntegrationsStore();
   resetWorkflowsStore();
   applyAgentsHydrate({

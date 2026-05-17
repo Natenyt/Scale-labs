@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import {
   CableIcon,
   CircleDotIcon,
@@ -24,6 +24,7 @@ import { WORKFLOW_NODE_LABELS } from "@/lib/workflows/types";
  */
 export type WorkflowNodeData = {
   node: WorkflowNode;
+  runtimeActive?: boolean;
 };
 
 const KIND_VISUALS: Record<
@@ -66,6 +67,51 @@ const KIND_VISUALS: Record<
   },
 };
 
+/** Subtle viewport outline on the minimap (muted so node colors stay primary). */
+export const MINIMAP_VIEWPORT_STROKE = "rgba(148, 163, 184, 0.85)";
+
+/** Solid fills for the navigator minimap (matches KIND_VISUALS accents). */
+export const MINIMAP_NODE_COLORS: Record<WorkflowNodeKind, string> = {
+  start: "#34d399",
+  conversation: "#94a3b8",
+  tool: "#a78bfa",
+  transfer_call: "#fbbf24",
+  end_call: "#fb7185",
+  api_request: "#22d3ee",
+};
+
+const MINIMAP_NODE_STROKE: Record<WorkflowNodeKind, string> = {
+  start: "#059669",
+  conversation: "#475569",
+  tool: "#7c3aed",
+  transfer_call: "#d97706",
+  end_call: "#e11d48",
+  api_request: "#0891b2",
+};
+
+export const MINIMAP_RUNTIME_ACTIVE_COLOR = "#2dd4bf";
+
+export function createMinimapNodeColor(runtimeActiveNodeId: string | null) {
+  return (node: Node): string => {
+    if (runtimeActiveNodeId && node.id === runtimeActiveNodeId) {
+      return MINIMAP_RUNTIME_ACTIVE_COLOR;
+    }
+    return minimapNodeColor(node);
+  };
+}
+
+export function minimapNodeColor(node: Node): string {
+  const kind = (node.data as WorkflowNodeData | undefined)?.node?.kind;
+  if (!kind) return "#64748b";
+  return MINIMAP_NODE_COLORS[kind];
+}
+
+export function minimapNodeStrokeColor(node: Node): string {
+  const kind = (node.data as WorkflowNodeData | undefined)?.node?.kind;
+  if (!kind) return "#334155";
+  return MINIMAP_NODE_STROKE[kind];
+}
+
 export function WorkflowNodeCard({
   data,
   selected,
@@ -77,15 +123,18 @@ export function WorkflowNodeCard({
   const isStart = node.kind === "start";
   const isEnd = node.kind === "end_call";
   const summary = describeNode(node);
+  const runtimeActive = Boolean(data.runtimeActive);
 
   return (
     <div
       className={cn(
         "group w-[240px] rounded-xl border bg-gradient-to-br p-3 shadow-sm ring-1 ring-inset transition",
         meta.tone,
-        selected
-          ? "border-foreground/40 shadow-lg"
-          : "border-border/60 hover:border-foreground/30",
+        runtimeActive && "workflow-node-runtime-active z-10 ring-2 ring-teal-400/80",
+        !runtimeActive &&
+          (selected
+            ? "border-foreground/40 shadow-lg ring-2 ring-white/50"
+            : "border-border/60 hover:border-foreground/30"),
       )}
     >
       {!isStart && (

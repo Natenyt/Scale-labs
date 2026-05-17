@@ -229,7 +229,6 @@ def attach_server(
     *,
     webhook_base: str,
     shared_secret: str,
-    notion_token: str,
 ) -> dict[str, Any]:
     iid = str(integration.get("id"))
     kind = preview["kind"]
@@ -245,13 +244,10 @@ def attach_server(
         "server": {
             "url": url,
             "secret": shared_secret,
+            # Auth only — Notion token + DB ids are loaded server-side from
+            # integration_id in the URL (Vapi often does not forward custom headers).
             "headers": {
                 "X-Scale-Labs-Secret": shared_secret,
-                "X-Integration-Id": iid,
-                "X-Tool-Kind": kind,
-                "X-Notion-Token": notion_token,
-                "X-Database-Id": str(integration.get("databaseId") or ""),
-                "X-Data-Source-Id": str(integration.get("dataSourceId") or ""),
             },
         },
     }
@@ -274,7 +270,6 @@ def build_notion_tool_payloads(
             p,
             webhook_base=webhook_base,
             shared_secret=shared_secret,
-            notion_token=notion_token,
         )
         for p in previews
     ]

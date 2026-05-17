@@ -210,3 +210,94 @@ class AssistantChatSerializer(serializers.Serializer):
                 {"agent_id": "Provide agent_id for this organization."},
             )
         return attrs
+
+
+class PhoneNumberCreateSerializer(serializers.Serializer):
+    provider = serializers.ChoiceField(
+        choices=["vapi", "twilio", "vonage", "telnyx", "byo"],
+    )
+    name = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    area_code = serializers.CharField(max_length=8, required=False, allow_blank=True)
+    number = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    twilio_account_sid = serializers.CharField(
+        max_length=64,
+        required=False,
+        allow_blank=True,
+    )
+    twilio_auth_token = serializers.CharField(
+        max_length=128,
+        required=False,
+        allow_blank=True,
+    )
+    credential_id = serializers.CharField(max_length=64, required=False, allow_blank=True)
+    sip_uri = serializers.CharField(max_length=256, required=False, allow_blank=True)
+    assign_agent_id = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    assign_workflow_id = serializers.CharField(
+        max_length=32,
+        required=False,
+        allow_blank=True,
+    )
+
+    def validate(self, attrs):
+        provider = attrs.get("provider")
+        if provider == "vapi" and not (attrs.get("area_code") or "").strip():
+            raise serializers.ValidationError(
+                {"area_code": "US area code is required to get a new number."},
+            )
+        if provider == "twilio":
+            missing = []
+            if not (attrs.get("number") or "").strip():
+                missing.append("number")
+            if not (attrs.get("twilio_account_sid") or "").strip():
+                missing.append("twilio_account_sid")
+            if not (attrs.get("twilio_auth_token") or "").strip():
+                missing.append("twilio_auth_token")
+            if missing:
+                raise serializers.ValidationError(
+                    {k: "This field is required for Twilio." for k in missing},
+                )
+        if provider in ("vonage", "telnyx"):
+            if not (attrs.get("number") or "").strip():
+                raise serializers.ValidationError(
+                    {"number": "Phone number is required."},
+                )
+            if not (attrs.get("credential_id") or "").strip():
+                raise serializers.ValidationError(
+                    {"credential_id": "Credential id is required for this provider."},
+                )
+        if provider == "byo":
+            if not (attrs.get("sip_uri") or "").strip() and not (
+                attrs.get("number") or ""
+            ).strip():
+                raise serializers.ValidationError(
+                    {"detail": "Provide a SIP URI or phone number."},
+                )
+        agent = (attrs.get("assign_agent_id") or "").strip()
+        wf = (attrs.get("assign_workflow_id") or "").strip()
+        if agent and wf:
+            raise serializers.ValidationError(
+                {"detail": "Assign either an agent or a workflow, not both."},
+            )
+        return attrs
+
+
+class PhoneNumberUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    assign_agent_id = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    assign_workflow_id = serializers.CharField(
+        max_length=32,
+        required=False,
+        allow_blank=True,
+    )
+    clear_assignment = serializers.BooleanField(required=False, default=False)
+
+    def validate(self, attrs):
+        if attrs.get("clear_assignment"):
+            return attrs
+        agent = (attrs.get("assign_agent_id") or "").strip()
+        wf = (attrs.get("assign_workflow_id") or "").strip()
+        if agent and wf:
+            raise serializers.ValidationError(
+                {"detail": "Assign either an agent or a workflow, not both."},
+            )
+        return attrs

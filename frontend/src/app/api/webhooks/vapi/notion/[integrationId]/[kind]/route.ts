@@ -8,6 +8,7 @@ import {
   normalizeNotionType,
   toRouteError,
 } from "@/lib/notion/server";
+import { parseVapiToolCall } from "@/lib/integrations/notion/parse-vapi-tool-call";
 import { requireSharedSecret } from "@/lib/vapi/server";
 
 export const runtime = "nodejs";
@@ -56,47 +57,35 @@ export async function POST(req: Request, ctx: RouteCtx) {
       { status: 500 },
     );
   }
-  const presented = req.headers.get("X-Scale-Labs-Secret");
-  if (!presented || presented !== expectedSecret) {
+  const presentedHeader = req.headers.get("X-Scale-Labs-Secret");
+  const auth = req.headers.get("Authorization") ?? "";
+  const presentedBearer = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7).trim()
+    : "";
+  if (
+    presentedHeader !== expectedSecret &&
+    presentedBearer !== expectedSecret
+  ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // ---- Parse Vapi tool-call payload --------------------------------------
-  let toolCall: {
-    id: string;
-    function: { name: string; arguments: Record<string, unknown> };
-  } | null = null;
+  let body: { message?: Record<string, unknown> };
   try {
-    const body = (await req.json()) as {
-      message?: {
-        toolCalls?: {
-          id: string;
-          function: { name: string; arguments: Record<string, unknown> | string };
-        }[];
-      };
-    };
-    const raw = body.message?.toolCalls?.[0];
-    if (raw) {
-      toolCall = {
-        id: raw.id,
-        function: {
-          name: raw.function.name,
-          arguments:
-            typeof raw.function.arguments === "string"
-              ? (JSON.parse(raw.function.arguments) as Record<string, unknown>)
-              : raw.function.arguments,
-        },
-      };
-    }
+    body = (await req.json()) as { message?: Record<string, unknown> };
   } catch {
-    /* fall through */
+    body = {};
   }
-  if (!toolCall) {
+  const parsed = parseVapiToolCall(body);
+  if (!parsed) {
     return NextResponse.json(
-      { error: "No toolCalls in payload" },
+      { error: "No tool call in payload (expected message.toolCallList)" },
       { status: 400 },
     );
   }
+  const toolCall = {
+    id: parsed.toolCallId,
+    function: { name: "", arguments: parsed.args },
+  };
 
   const dataSourceId = req.headers.get("X-Data-Source-Id");
   const databaseId = req.headers.get("X-Database-Id");

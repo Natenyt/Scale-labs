@@ -21,7 +21,7 @@ import { WorkflowCanvas } from "@/components/workflows/canvas/canvas";
 import { useWorkflows } from "@/components/workflows/workflows-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { WorkflowTestSheet } from "@/components/workflows/workflow-test-sheet";
+import { WorkflowTestPanel } from "@/components/workflows/workflow-test-panel";
 import { cn } from "@/lib/utils";
 import { syncWorkflow } from "@/lib/workflows/sync-client";
 import type { NotionIntegration } from "@/lib/integrations/types";
@@ -38,7 +38,10 @@ import type {
 export default function WorkflowDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const [testOpen, setTestOpen] = React.useState(false);
+  const [testMode, setTestMode] = React.useState(false);
+  const [runtimeActiveNodeId, setRuntimeActiveNodeId] = React.useState<
+    string | null
+  >(null);
   const {
     byId,
     ready,
@@ -127,27 +130,41 @@ export default function WorkflowDetailPage() {
             toast.error("Save and sync this workflow to Vapi before testing.");
             return;
           }
-          setTestOpen(true);
+          setTestMode(true);
+          setRuntimeActiveNodeId(null);
         }}
       />
-      <WorkflowTestSheet
-        open={testOpen}
-        onOpenChange={setTestOpen}
-        workflowName={workflow.name}
-        workflowRecordId={workflow.id}
-        voiceSynced={Boolean(workflow.vapiWorkflowId?.trim())}
-      />
       {errors.length > 0 ? <ValidationBanner errors={errors} /> : null}
-      <div className="min-h-0 flex-1">
-        {/* keying by workflow id resets internal canvas state on route change */}
-        <WorkflowCanvas
-          key={workflow.id}
-          workflow={workflow}
-          onChange={onGraphChange}
-          onGlobalPromptChange={(globalPrompt) =>
-            updateWorkflow(workflow.id, { globalPrompt })
-          }
-        />
+      <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
+        <div className="min-h-0 min-w-0 flex-1">
+          <WorkflowCanvas
+            key={workflow.id}
+            workflow={workflow}
+            onChange={onGraphChange}
+            onGlobalPromptChange={(globalPrompt) =>
+              updateWorkflow(workflow.id, { globalPrompt })
+            }
+            runtimeActiveNodeId={testMode ? runtimeActiveNodeId : null}
+            hideInspector={testMode}
+          />
+        </div>
+        {testMode ? (
+          <WorkflowTestPanel
+            workflowName={workflow.name}
+            workflowRecordId={workflow.id}
+            voiceSynced={Boolean(workflow.vapiWorkflowId?.trim())}
+            onClose={() => {
+              setTestMode(false);
+              setRuntimeActiveNodeId(null);
+            }}
+            onCallStart={() => setRuntimeActiveNodeId("start")}
+            onCallEnd={() => {
+              setTestMode(false);
+              setRuntimeActiveNodeId(null);
+            }}
+            onActiveNodeChange={setRuntimeActiveNodeId}
+          />
+        ) : null}
       </div>
     </div>
   );

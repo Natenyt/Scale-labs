@@ -20,21 +20,18 @@ import {
 
 const PATCH_DEBOUNCE_MS = 650;
 
-/** Agent CRUD hits Django (server `VAPI_API_KEY`) when signed in with API URL set. */
 function canPersistAgentsToApi(): boolean {
   return hasBackendApi() && Boolean(getAccessToken()?.trim());
 }
 
-type AgentsContextValue = {
+export type AgentsState = {
   agents: Agent[];
   ready: boolean;
-  /** Agents are backed by Django + Vapi assistant ids when true. */
   remote: boolean;
-  /**
-   * True when `NEXT_PUBLIC_API_BASE_URL` is set but listing agents from the API failed.
-   * UI should warn — new creates are local-only until this is resolved.
-   */
   apiAgentsLoadFailed: boolean;
+};
+
+export type AgentsActions = {
   getAgent: (id: string) => Agent | undefined;
   createAgent: (
     template: AgentTemplate,
@@ -44,11 +41,11 @@ type AgentsContextValue = {
   updateAgent: (id: string, patch: Partial<Agent>) => void;
   deleteAgent: (id: string) => void;
   duplicateAgent: (id: string) => Promise<Agent | null>;
-  /** Update only `vapiAssistantId` locally without PATCHing the server (e.g. after sync-vapi). */
   setAgentVapiAssistantId: (id: string, vapiAssistantId: string | null) => void;
 };
 
-const AgentsContext = React.createContext<AgentsContextValue | null>(null);
+const AgentsStateContext = React.createContext<AgentsState | null>(null);
+const AgentsActionsContext = React.createContext<AgentsActions | null>(null);
 
 export function AgentsProvider({ children }: { children: React.ReactNode }) {
   const [agents, setAgents] = React.useState<Agent[]>([]);
@@ -172,13 +169,14 @@ export function AgentsProvider({ children }: { children: React.ReactNode }) {
     patchTimersRef.current.set(id, t);
   }, []);
 
-  const value = React.useMemo<AgentsContextValue>(
+  const stateValue = React.useMemo<AgentsState>(
+    () => ({ agents, ready, remote, apiAgentsLoadFailed }),
+    [agents, ready, remote, apiAgentsLoadFailed],
+  );
+
+  const actionsValue = React.useMemo<AgentsActions>(
     () => ({
-      agents,
-      ready,
-      remote,
-      apiAgentsLoadFailed,
-      getAgent: (id) => agents.find((a) => a.id === id),
+      getAgent: (id) => agentsRef.current.find((a) => a.id === id),
       createAgent: async (template, name, language) => {
         if (!canPersistAgentsToApi()) {
           toast.error("Sign in to create agents on the server.");
@@ -267,25 +265,42 @@ export function AgentsProvider({ children }: { children: React.ReactNode }) {
         }
       },
     }),
-    [
-      agents,
-      ready,
-      remote,
-      apiAgentsLoadFailed,
-      scheduleRemotePatch,
-      setAgentVapiAssistantId,
-    ],
+    [scheduleRemotePatch, setAgentVapiAssistantId],
   );
 
   return (
-    <AgentsContext.Provider value={value}>{children}</AgentsContext.Provider>
+    <AgentsStateContext.Provider value={stateValue}>
+      <AgentsActionsContext.Provider value={actionsValue}>
+        {children}
+      </AgentsActionsContext.Provider>
+    </AgentsStateContext.Provider>
   );
 }
 
-export function useAgents() {
-  const ctx = React.useContext(AgentsContext);
+export function useAgentsState(): AgentsState {
+  const ctx = React.useContext(AgentsStateContext);
   if (!ctx) {
-    throw new Error("useAgents must be used inside <AgentsProvider>");
+    throw new Error("useAgentsState must be used inside <AgentsProvider>");
   }
   return ctx;
+}
+
+export function useAgentsActions(): AgentsActions {
+  const ctx = React.useContext(AgentsActionsContext);
+  if (!ctx) {
+    throw new Error("useAgentsActions must be used inside <AgentsProvider>");
+  }
+  return ctx;
+}
+
+export function useAgents(): AgentsState & AgentsActions {
+  return { ...useAgentsState(), ...useAgentsActions() };
+}
+
+export function useAgent(id: string): Agent | undefined {
+  const { agents } = useAgentsState();
+  return React.useMemo(
+    () => agents.find((a) => a.id === id),
+    [agents, id],
+  );
 }

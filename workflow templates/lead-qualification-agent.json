@@ -1,0 +1,359 @@
+{
+  "name": "Lead Qualification Agent",
+  "nodes": [
+    {
+      "name": "introduction",
+      "type": "conversation",
+      "isStart": true,
+      "metadata": {
+        "position": {
+          "x": -400,
+          "y": -100
+        }
+      },
+      "prompt": "You are Morgan from GrowthPartners. Start with: 'Hello, this is Morgan from GrowthPartners. We help businesses improve their operational efficiency through custom software solutions. Do you have a few minutes to chat about how we might be able to help your business?' Use a friendly, consultative tone.",
+      "messagePlan": {
+        "firstMessage": "Hello, this is Morgan from GrowthPartners. Do you have a few minutes to chat about how we might be able to help your business?"
+      }
+    },
+    {
+      "name": "need_discovery",
+      "type": "conversation",
+      "metadata": {
+        "position": {
+          "x": 122.06055576907863,
+          "y": 370.339156111954
+        }
+      },
+      "prompt": "Conduct need discovery by asking about: 1) Their business and industry, 2) Current systems/processes they use, 3) Biggest challenges with current approach, 4) How challenges affect operations/bottom line, 5) Previous solutions tried. Ask one question at a time, listen actively, and acknowledge their responses. Keep responses under 30 words unless providing valuable information.",
+      "variableExtractionPlan": {
+        "output": [
+          {
+            "type": "string",
+            "title": "industry",
+            "description": "the user's industry or business type"
+          },
+          {
+            "type": "string",
+            "title": "company_size",
+            "description": "approximate number of employees or company size indicators"
+          },
+          {
+            "type": "string",
+            "title": "pain_points",
+            "description": "main business challenges or pain points mentioned"
+          },
+          {
+            "type": "string",
+            "title": "current_systems",
+            "description": "current systems or processes they use"
+          }
+        ]
+      }
+    },
+    {
+      "name": "solution_alignment",
+      "type": "conversation",
+      "metadata": {
+        "position": {
+          "x": 125.63713417374936,
+          "y": 905.3346543965437
+        }
+      },
+      "prompt": "Based on their pain points ({{pain_points}}) and industry ({{industry}}), highlight relevant GrowthPartners capabilities. Mention specific solutions: OperationsOS for workflow automation, InsightAnalytics for data analysis, or CustomerConnect for client relationship management. Share a relevant success story from a similar company. Explain key differentiators like customization, implementation support, and integration capabilities. Be brief."
+    },
+    {
+      "name": "qualification_assessment",
+      "type": "conversation",
+      "metadata": {
+        "position": {
+          "x": 126.06167068192559,
+          "y": 1470.257255047713
+        }
+      },
+      "prompt": "Assess qualification by asking about: 1) Timeline for implementing a solution, 2) Budget allocation for this area, 3) Who else would be involved in evaluation, 4) How they would measure success. Listen for indicators that they meet our ideal customer profile: 50+ employees, $5M+ revenue, growth challenges, and willingness to invest in process improvement.\n\nExtract variables as users provide additional information",
+      "variableExtractionPlan": {
+        "output": [
+          {
+            "type": "string",
+            "title": "timeline",
+            "description": "their timeline for implementing a solution"
+          },
+          {
+            "type": "string",
+            "title": "budget_status",
+            "description": "information about budget allocation or financial capacity"
+          },
+          {
+            "type": "string",
+            "title": "decision_makers",
+            "description": "who else is involved in the decision process"
+          },
+          {
+            "type": "string",
+            "title": "success_criteria",
+            "description": "how they would measure success of a solution"
+          }
+        ]
+      }
+    },
+    {
+      "name": "qualified_handoff",
+      "type": "conversation",
+      "metadata": {
+        "position": {
+          "x": 9.720369487897784,
+          "y": 2193.2384478593317
+        }
+      },
+      "prompt": "For qualified users, say: 'Based on our conversation, I think it would be valuable to have you speak with [appropriate sales representative], who specializes in [relevant area]. They can provide a more tailored overview of how we could help with [specific challenges mentioned]. Would you be available for a 30-minute call this week?' Suggest specific times and get their contact information.",
+      "variableExtractionPlan": {
+        "output": [
+          {
+            "type": "string",
+            "title": "contact_email",
+            "description": "user's email address"
+          },
+          {
+            "type": "string",
+            "title": "preferred_meeting_time",
+            "description": "their preferred time for the sales meeting"
+          }
+        ]
+      }
+    },
+    {
+      "name": "nurture_prospect",
+      "type": "conversation",
+      "metadata": {
+        "position": {
+          "x": -604.7161537968582,
+          "y": 2059.055679472908
+        }
+      },
+      "prompt": "For users needing nurturing, say: 'It sounds like the timing might not be ideal right now. Would it be helpful if I sent you some information about how we've helped similar businesses in your industry? Then perhaps we could reconnect in [appropriate timeframe].' Get their email and set expectations for follow-up.",
+      "variableExtractionPlan": {
+        "output": [
+          {
+            "type": "string",
+            "title": "contact_email",
+            "description": "users's email address for nurturing materials"
+          },
+          {
+            "type": "string",
+            "title": "follow_up_timeframe",
+            "description": "when they'd like to be contacted again"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unqualified_closure",
+      "type": "conversation",
+      "metadata": {
+        "position": {
+          "x": 1000.7843424930643,
+          "y": 2395.0470402241995
+        }
+      },
+      "prompt": "For unqualified leads, say: 'Based on what you've shared, it sounds like our solutions might not be the best fit for your current needs. We typically work best with companies that [mention relevant ideal customer criteria]. To be respectful of your time, I won't suggest moving forward, but if your situation changes, especially regarding [qualifying factor], please reach out.' Be honest but respectful."
+    },
+    {
+      "name": "reschedule_call",
+      "type": "conversation",
+      "metadata": {
+        "position": {
+          "x": -885.4347033091486,
+          "y": 367.29340651463184
+        }
+      },
+      "prompt": "If they're too busy now, say: 'I understand you're pressed for time. Would it be better to schedule a specific time for us to talk? I'd be happy to follow up when timing is better for you.' Get their preferred contact method and timing, then schedule the follow-up.",
+      "variableExtractionPlan": {
+        "output": [
+          {
+            "type": "string",
+            "title": "callback_time",
+            "description": "when they prefer to be called back"
+          },
+          {
+            "type": "string",
+            "title": "contact_preference",
+            "description": "their preferred contact method"
+          }
+        ]
+      }
+    },
+    {
+      "name": "node_1748494069554",
+      "type": "conversation",
+      "metadata": {
+        "position": {
+          "x": 855.7693700589409,
+          "y": 4.569833689848679
+        }
+      },
+      "prompt": "Confirm that user wants to speak to a human, and ask them what they would like to speak about.",
+      "globalNodePlan": {
+        "enabled": true,
+        "enterCondition": "User wants to speak to a human"
+      }
+    },
+    {
+      "name": "Transfer Call",
+      "type": "tool",
+      "metadata": {
+        "position": {
+          "x": 855.274797496511,
+          "y": 338.4326280229033
+        }
+      },
+      "tool": {
+        "type": "transferCall",
+        "function": {
+          "name": "untitled_tool",
+          "parameters": {
+            "type": "object",
+            "required": [],
+            "properties": {}
+          }
+        },
+        "destinations": []
+      }
+    },
+    {
+      "name": "hangup_1748495933394",
+      "type": "tool",
+      "metadata": {
+        "position": {
+          "x": -931.1203356839779,
+          "y": 2889.877554343056
+        }
+      },
+      "tool": {
+        "type": "endCall",
+        "function": {
+          "name": "untitled_tool",
+          "parameters": {
+            "type": "object",
+            "required": [],
+            "properties": {}
+          }
+        },
+        "messages": [
+          {
+            "type": "request-start",
+            "content": "Thank you for taking the time to chat today. Have a great day!",
+            "blocking": true
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "introduction",
+      "to": "need_discovery",
+      "condition": {
+        "type": "ai",
+        "prompt": "User agreed to chat and shows interest in learning more"
+      }
+    },
+    {
+      "from": "introduction",
+      "to": "reschedule_call",
+      "condition": {
+        "type": "ai",
+        "prompt": "User said they're too busy right now but seems potentially interested"
+      }
+    },
+    {
+      "from": "introduction",
+      "to": "hangup_1748495933394",
+      "condition": {
+        "type": "ai",
+        "prompt": "User was not interested or wants to end the call"
+      }
+    },
+    {
+      "from": "need_discovery",
+      "to": "solution_alignment",
+      "condition": {
+        "type": "ai",
+        "prompt": "Sufficient information gathered about their business, industry, pain points, and current systems"
+      }
+    },
+    {
+      "from": "solution_alignment",
+      "to": "qualification_assessment",
+      "condition": {
+        "type": "ai",
+        "prompt": "User showed interest in the solutions presented and wants to learn more"
+      }
+    },
+    {
+      "from": "qualification_assessment",
+      "to": "qualified_handoff",
+      "condition": {
+        "type": "ai",
+        "prompt": "User met qualification criteria: has timeline within 3-6 months, budget capacity, decision authority or influence, and clear need for our solutions"
+      }
+    },
+    {
+      "from": "qualification_assessment",
+      "to": "nurture_prospect",
+      "condition": {
+        "type": "ai",
+        "prompt": "User has potential but timing isn't right, budget unclear, or needs more information before moving forward"
+      }
+    },
+    {
+      "from": "qualification_assessment",
+      "to": "unqualified_closure",
+      "condition": {
+        "type": "ai",
+        "prompt": "User didn't meet ideal customer profile (too small, no budget, no authority, no clear need, or very long timeline)"
+      }
+    },
+    {
+      "from": "reschedule_call",
+      "to": "hangup_1748495933394",
+      "condition": {
+        "type": "ai",
+        "prompt": "Callback time and contact information obtained, or user decides not to reschedule"
+      }
+    },
+    {
+      "from": "qualified_handoff",
+      "to": "hangup_1748495933394",
+      "condition": {
+        "type": "ai",
+        "prompt": "Meeting scheduled and contact information obtained"
+      }
+    },
+    {
+      "from": "nurture_prospect",
+      "to": "hangup_1748495933394",
+      "condition": {
+        "type": "ai",
+        "prompt": "Email obtained and follow-up expectations set"
+      }
+    },
+    {
+      "from": "unqualified_closure",
+      "to": "hangup_1748495933394",
+      "condition": {
+        "type": "ai",
+        "prompt": "User responded or acknowledged"
+      }
+    },
+    {
+      "from": "node_1748494069554",
+      "to": "Transfer Call",
+      "condition": {
+        "type": "ai",
+        "prompt": "User confirmed"
+      }
+    }
+  ],
+  "globalPrompt": ""
+}

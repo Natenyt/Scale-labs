@@ -92,6 +92,26 @@ type VapiToolNode = {
   globalNodePlan?: VapiGlobalNodePlan;
 };
 
+/** Vapi dashboard built-in transfer tool (no E.164 on the node). */
+type VapiBuiltinTransferToolNode = {
+  type: "tool";
+  name: string;
+  metadata?: VapiNodeMetadata;
+  globalNodePlan?: VapiGlobalNodePlan;
+  tool: {
+    type: "transferCall";
+    function: {
+      name: string;
+      parameters: {
+        type: "object";
+        required: string[];
+        properties: Record<string, never>;
+      };
+    };
+    destinations: unknown[];
+  };
+};
+
 type VapiTransferNode = {
   type: "transfer";
   name: string;
@@ -121,6 +141,7 @@ type VapiApiRequestNode = {
 export type VapiNode =
   | VapiConversationNode
   | VapiToolNode
+  | VapiBuiltinTransferToolNode
   | VapiTransferNode
   | VapiEndNode
   | VapiApiRequestNode;
@@ -278,12 +299,34 @@ function mapNode(node: WorkflowNode): VapiNode {
       return out;
     }
     case "transfer_call": {
+      const number = (node.destination ?? "").trim();
+      if (!number) {
+        const out: VapiBuiltinTransferToolNode = {
+          type: "tool",
+          name,
+          metadata,
+          tool: {
+            type: "transferCall",
+            function: {
+              name: "transfer_call",
+              parameters: {
+                type: "object",
+                required: [],
+                properties: {},
+              },
+            },
+            destinations: [],
+          },
+        };
+        if (globalNodePlan) out.globalNodePlan = globalNodePlan;
+        return out;
+      }
       const out: VapiTransferNode = {
         type: "transfer",
         name,
         destination: {
           type: "number",
-          number: (node.destination ?? "").trim(),
+          number,
         },
         metadata,
       };
@@ -401,16 +444,7 @@ function validate(
         });
       }
     }
-    if (node.kind === "transfer_call") {
-      if (!node.destination || node.destination.trim().length === 0) {
-        errors.push({
-          code: "MISSING_FIELD",
-          message:
-            "Transfer node needs a destination phone number (E.164 format).",
-          nodeId: node.id,
-        });
-      }
-    }
+    // transfer_call without destination compiles to Vapi's built-in transferCall tool.
     if (node.kind === "api_request") {
       if (!node.apiRequest?.url || node.apiRequest.url.trim().length === 0) {
         errors.push({
@@ -454,19 +488,26 @@ function validate(
       arr.push(edge.to);
       adjacency.set(edge.from, arr);
     }
-    const visited = new Set<string>([startId]);
-    const queue: string[] = [startId];
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      for (const next of adjacency.get(current) ?? []) {
-        if (!visited.has(next)) {
-          visited.add(next);
-          queue.push(next);
+    const visited = new Set<string>();
+    const enqueueFrom = (originId: string) => {
+      if (!nodeIds.has(originId) || visited.has(originId)) return;
+      const queue: string[] = [originId];
+      visited.add(originId);
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        for (const next of adjacency.get(current) ?? []) {
+          if (!visited.has(next)) {
+            visited.add(next);
+            queue.push(next);
+          }
         }
       }
+    };
+    enqueueFrom(startId);
+    for (const node of workflow.nodes) {
+      if (node.isGlobal) enqueueFrom(node.id);
     }
     for (const node of workflow.nodes) {
-      // Global nodes are reachable by-definition (their condition triggers them).
       if (node.isGlobal) continue;
       if (!visited.has(node.id)) {
         errors.push({

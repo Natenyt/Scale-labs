@@ -14,6 +14,23 @@ router.register(
 router.register(r"calls", views.CallViewSet, basename="call")
 
 urlpatterns = [
+    path("metrics/", views.MetricsDashboardView.as_view(), name="metrics-dashboard"),
+    path(
+        "phone-numbers/",
+        views.PhoneNumberListCreateView.as_view(),
+        name="phone-numbers-list",
+    ),
+    path(
+        "phone-numbers/<str:phone_number_id>/",
+        views.PhoneNumberDetailView.as_view(),
+        name="phone-numbers-detail",
+    ),
+    path("call-logs/", views.CallLogsListView.as_view(), name="call-logs-list"),
+    path(
+        "call-logs/<str:vapi_call_id>/",
+        views.CallLogDetailView.as_view(),
+        name="call-logs-detail",
+    ),
     # Before router `calls/<pk>/` or `web-config` is treated as a call id (405 on POST).
     path("calls/voice-ready/", views.VoiceReadyView.as_view(), name="call-voice-ready"),
     path("calls/web-config/", views.WebCallConfigView.as_view(), name="call-web-config"),

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { useIntegrations } from "@/components/integrations/integrations-store";
+import { useCompleteNavigationWhenReady } from "@/components/navigation/navigation-pending";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,6 +92,8 @@ export default function IntegrationsPage() {
   const notionConnections = byKind("notion") as NotionIntegration[];
   const notionCard = KINDS[0];
 
+  useCompleteNavigationWhenReady(ready);
+
   const handleResync = React.useCallback(
     (record: NotionIntegration) => {
       void resyncNotionTools(record, { setSyncStatus, setVapiTools });
@@ -115,6 +118,10 @@ export default function IntegrationsPage() {
     },
     [deleteIntegration],
   );
+
+  if (!ready) {
+    return null;
+  }
 
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6 pt-2">
@@ -146,9 +153,7 @@ export default function IntegrationsPage() {
         </CardHeader>
 
         <CardContent className="grid gap-2">
-          {!ready ? (
-            <NotionEmptySkeleton />
-          ) : notionConnections.length === 0 ? (
+          {notionConnections.length === 0 ? (
             <NotionEmptyState />
           ) : (
             notionConnections.map((conn) => (
@@ -376,12 +381,6 @@ function NotionEmptyState() {
         and pick the database you want this agent to read from.
       </p>
     </div>
-  );
-}
-
-function NotionEmptySkeleton() {
-  return (
-    <div className="border-border/40 grid h-16 animate-pulse rounded-lg border" />
   );
 }
 

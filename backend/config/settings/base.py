@@ -22,6 +22,7 @@ env = environ.Env(
     VAPI_API_KEY=(str, ""),
     VAPI_PUBLIC_KEY=(str, ""),
     VAPI_WEBHOOK_BASE=(str, ""),
+    DEV_PUBLIC_ORIGIN=(str, ""),
     VAPI_SHARED_SECRET=(str, ""),
     FIELD_ENCRYPTION_KEY=(str, ""),
 )
@@ -61,6 +62,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.studio.middleware.ActiveOrganizationMiddleware",
+    "apps.studio.middleware.VapiWebhookRequestLogMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -99,6 +101,16 @@ USE_TZ = True
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Per-process cache (dev/single worker). Set REDIS_URL in production for shared cache.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "scalelabs-default",
+    }
+}
+
+METRICS_CACHE_TTL_SECONDS = 60
+
 AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
@@ -135,6 +147,16 @@ CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 # --- Scale Labs service env (read in services, not all required at import) ---
 VAPI_API_KEY = env("VAPI_API_KEY", default="")
 VAPI_PUBLIC_KEY = env("VAPI_PUBLIC_KEY", default="")
-VAPI_WEBHOOK_BASE = env("VAPI_WEBHOOK_BASE", default="").rstrip("/")
+
+# Raw env (may be localhost); effective base is resolved for Vapi tool server URLs.
+VAPI_WEBHOOK_BASE_RAW = env("VAPI_WEBHOOK_BASE", default="").strip()
+DEV_PUBLIC_ORIGIN = env("DEV_PUBLIC_ORIGIN", default="").strip()
+
+from config.vapi_webhook import is_local_webhook_base, resolve_vapi_webhook_base  # noqa: E402
+
+VAPI_WEBHOOK_BASE = resolve_vapi_webhook_base(
+    explicit=VAPI_WEBHOOK_BASE_RAW,
+    dev_public_origin=DEV_PUBLIC_ORIGIN,
+)
 VAPI_SHARED_SECRET = env("VAPI_SHARED_SECRET", default="")
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="")

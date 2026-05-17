@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   CheckCircle2Icon,
   ChevronRightIcon,
@@ -15,6 +14,8 @@ import {
   Trash2Icon,
 } from "lucide-react";
 
+import { useCompleteNavigationWhenReady } from "@/components/navigation/navigation-pending";
+import { NewWorkflowDialog } from "@/components/workflows/new-workflow-dialog";
 import { useWorkflows } from "@/components/workflows/workflows-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,53 +31,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { apiFetch } from "@/lib/api/client";
-import { hasBackendApi } from "@/lib/api/env";
-import { defaultStartNode } from "@/lib/workflows/store";
 import { deleteWorkflowOnVapi } from "@/lib/workflows/sync-client";
 import type { Workflow } from "@/lib/workflows/types";
 
 export default function WorkflowListPage() {
-  const router = useRouter();
-  const { workflows, ready, createWorkflow, deleteWorkflow } = useWorkflows();
+  const { workflows, ready, deleteWorkflow } = useWorkflows();
+  const [createOpen, setCreateOpen] = React.useState(false);
 
-  const handleCreate = React.useCallback(async () => {
-    if (hasBackendApi()) {
-      try {
-        const created = await apiFetch<{
-          id: string;
-          name: string;
-          graph: { nodes: Workflow["nodes"]; edges: Workflow["edges"] };
-          global_prompt: string;
-          vapi_workflow_id: string | null;
-          last_synced_at: string | null;
-        }>("/api/v1/workflows/", {
-          method: "POST",
-          json: {
-            name: "Untitled workflow",
-            graph: { nodes: [defaultStartNode()], edges: [] },
-            global_prompt: "",
-          },
-        });
-        createWorkflow({
-          id: created.id,
-          name: created.name,
-          nodes: created.graph.nodes,
-          edges: created.graph.edges,
-          globalPrompt: created.global_prompt || undefined,
-          vapiWorkflowId: created.vapi_workflow_id ?? undefined,
-          lastSyncedAt: created.last_synced_at ?? undefined,
-        });
-        router.push(`/workflow/${created.id}`);
-      } catch {
-        const record = createWorkflow({ name: "Untitled workflow" });
-        router.push(`/workflow/${record.id}`);
-      }
-    } else {
-      const record = createWorkflow({ name: "Untitled workflow" });
-      router.push(`/workflow/${record.id}`);
-    }
-  }, [createWorkflow, router]);
+  useCompleteNavigationWhenReady(ready);
+
+  const openCreate = React.useCallback(() => setCreateOpen(true), []);
 
   const handleDelete = React.useCallback(
     (record: Workflow) => {
@@ -87,9 +51,14 @@ export default function WorkflowListPage() {
     [deleteWorkflow],
   );
 
+  if (!ready) {
+    return null;
+  }
+
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-6 pt-2">
-      <PageHeader onCreate={handleCreate} />
+      <PageHeader onCreate={openCreate} />
+      <NewWorkflowDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <Card>
         <CardHeader className="flex flex-row items-start gap-3">
@@ -106,10 +75,8 @@ export default function WorkflowListPage() {
           </div>
         </CardHeader>
         <CardContent className="grid gap-2">
-          {!ready ? (
-            <EmptySkeleton />
-          ) : workflows.length === 0 ? (
-            <EmptyState onCreate={handleCreate} />
+          {workflows.length === 0 ? (
+            <EmptyState onCreate={openCreate} />
           ) : (
             workflows.map((w) => (
               <WorkflowRow
@@ -135,7 +102,7 @@ function PageHeader({ onCreate }: { onCreate: () => void }) {
           is mirrored to your Vapi workspace so an assistant can dispatch to it.
         </p>
       </div>
-      <Button onClick={onCreate} className="gap-1.5">
+      <Button type="button" onClick={onCreate} className="gap-1.5">
         <PlusIcon className="size-4" />
         New workflow
       </Button>
@@ -266,17 +233,11 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
         an agent can complete a real task. Start with a single Conversation
         node and grow it from there.
       </p>
-      <Button onClick={onCreate} className="gap-1.5">
+      <Button type="button" onClick={onCreate} className="gap-1.5">
         <PlusIcon className="size-4" />
         Create your first workflow
       </Button>
     </div>
-  );
-}
-
-function EmptySkeleton() {
-  return (
-    <div className="border-border/40 grid h-16 animate-pulse rounded-lg border" />
   );
 }
 

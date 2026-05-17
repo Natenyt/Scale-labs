@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { BotIcon, Loader2Icon } from "lucide-react";
-
+import { BotIcon } from "lucide-react";
+import { useCompleteNavigationWhenReady } from "@/components/navigation/navigation-pending";
 import { AgentCard } from "@/components/agents/agent-card";
 import {
   AgentsToolbar,
@@ -48,6 +48,13 @@ export default function AgentsPage() {
   const needsSignIn = hasBackendApi() && !getAccessToken()?.trim();
   const needsApi = !hasBackendApi();
 
+  const pageReady = needsApi || ready;
+  useCompleteNavigationWhenReady(pageReady);
+
+  if (!pageReady) {
+    return null;
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       <AgentsToolbar
@@ -82,12 +89,7 @@ export default function AgentsPage() {
         </div>
       ) : null}
 
-      {!ready ? (
-        <div className="text-muted-foreground flex items-center justify-center gap-2 py-16 text-sm">
-          <Loader2Icon className="size-4 animate-spin" />
-          Loading agents…
-        </div>
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="border-border/40 grid place-items-center gap-3 rounded-xl border border-dashed px-6 py-16 text-center">
           <div className="bg-muted flex size-12 items-center justify-center rounded-xl">
             <BotIcon className="text-muted-foreground size-6" />

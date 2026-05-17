@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from typing import Any
 
 import httpx
@@ -16,6 +17,19 @@ class VapiApiError(Exception):
 
 BASE = "https://api.vapi.ai"
 
+_REQUEST_TIMEOUT = 60.0
+_HTTP_LIMITS = httpx.Limits(max_connections=20, max_keepalive_connections=10)
+_thread_local = threading.local()
+
+
+def _get_http_client() -> httpx.Client:
+    """One client per thread — safe for ThreadPoolExecutor parallel Vapi calls."""
+    client = getattr(_thread_local, "client", None)
+    if client is None or client.is_closed:
+        client = httpx.Client(timeout=_REQUEST_TIMEOUT, limits=_HTTP_LIMITS)
+        _thread_local.client = client
+    return client
+
 
 def _headers() -> dict[str, str]:
     key = (settings.VAPI_API_KEY or "").strip()
@@ -27,10 +41,22 @@ def _headers() -> dict[str, str]:
     }
 
 
-def vapi_request(method: str, path: str, json_body: Any | None = None) -> Any:
+def vapi_request(
+    method: str,
+    path: str,
+    json_body: Any | None = None,
+    *,
+    params: dict[str, Any] | None = None,
+) -> Any:
     url = f"{BASE}{path}"
-    with httpx.Client(timeout=60.0) as client:
-        r = client.request(method, url, headers=_headers(), json=json_body)
+    client = _get_http_client()
+    r = client.request(
+        method,
+        url,
+        headers=_headers(),
+        json=json_body,
+        params=params,
+    )
     text = r.text or ""
     parsed: Any = None
     if text:
@@ -75,6 +101,53 @@ def create_phone_call(payload: dict[str, Any]) -> dict[str, Any]:
     Caller supplies assistantId or workflowId, phoneNumberId, customer.number, etc.
     """
     return vapi_request("POST", "/call", payload)  # type: ignore[return-value]
+
+
+def list_calls(**query: Any) -> list[dict[str, Any]]:
+    """GET /call — returns a list of call objects."""
+    res = vapi_request("GET", "/call", params=query or None)
+    if isinstance(res, list):
+        return [c for c in res if isinstance(c, dict)]
+    return []
+
+
+def get_call(call_id: str) -> dict[str, Any]:
+    """GET /call/{id} — single call with artifact, cost, messages."""
+    res = vapi_request("GET", f"/call/{call_id}")
+    return res if isinstance(res, dict) else {}
+
+
+def list_phone_numbers(**query: Any) -> list[dict[str, Any]]:
+    """GET /phone-number — list phone numbers."""
+    res = vapi_request("GET", "/phone-number", params=query or None)
+    if isinstance(res, list):
+        return [r for r in res if isinstance(r, dict)]
+    return []
+
+
+def get_phone_number(phone_number_id: str) -> dict[str, Any]:
+    res = vapi_request("GET", f"/phone-number/{phone_number_id}")
+    return res if isinstance(res, dict) else {}
+
+
+def create_phone_number(payload: dict[str, Any]) -> dict[str, Any]:
+    return vapi_request("POST", "/phone-number", payload)  # type: ignore[return-value]
+
+
+def update_phone_number(phone_number_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return vapi_request("PATCH", f"/phone-number/{phone_number_id}", payload)  # type: ignore[return-value]
+
+
+def delete_phone_number(phone_number_id: str) -> None:
+    vapi_request("DELETE", f"/phone-number/{phone_number_id}")
+
+
+def post_analytics(queries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """POST /analytics — batch metric queries."""
+    res = vapi_request("POST", "/analytics", {"queries": queries})
+    if isinstance(res, list):
+        return [r for r in res if isinstance(r, dict)]
+    return []
 
 
 def create_chat(payload: dict[str, Any]) -> dict[str, Any]:

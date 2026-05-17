@@ -136,7 +136,12 @@ function vapiErrorMessage(data: SyncResponse, status: number): string {
   if (data.code === "vapi_token_missing")
     return "VAPI_API_KEY is not configured on the server.";
   if (data.code === "vapi_webhook_base_missing")
-    return "VAPI_WEBHOOK_BASE is not configured. Set a public URL (use ngrok in local dev).";
+    return "VAPI_WEBHOOK_BASE is not configured. Set a public https URL, or DEV_PUBLIC_ORIGIN (ngrok on port 3000) in backend/.env.";
+  if (data.code === "vapi_webhook_base_not_public")
+    return (
+      data.error ??
+      "Webhook URL is localhost — Vapi cannot reach it. Set DEV_PUBLIC_ORIGIN to your ngrok URL and re-sync tools."
+    );
   if (data.code === "vapi_shared_secret_missing")
     return "VAPI_SHARED_SECRET is not configured on the server.";
   return data.error ?? `Vapi sync failed (HTTP ${status})`;

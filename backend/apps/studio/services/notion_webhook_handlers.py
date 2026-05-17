@@ -300,26 +300,72 @@ def do_delete(
     return {"ok": True, "action": "delete", "pageId": pid, "archived": True}
 
 
-def parse_tool_call(body: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
+def _coerce_args(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _parse_one_tool_call(raw: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
+    if not isinstance(raw, dict):
+        return None
+    tc_id = str(raw.get("id") or raw.get("toolCallId") or "")
+    fn = raw.get("function") if isinstance(raw.get("function"), dict) else {}
+    args_raw = (
+        raw.get("arguments")
+        if raw.get("arguments") is not None
+        else raw.get("parameters")
+        if raw.get("parameters") is not None
+        else fn.get("arguments")
+        if fn.get("arguments") is not None
+        else fn.get("parameters")
+    )
     try:
-        raw_calls = (
-            body.get("message", {}).get("toolCalls")
-            or body.get("message", {}).get("tool_calls")
-            or []
-        )
-        if not raw_calls:
+        args = _coerce_args(args_raw)
+    except json.JSONDecodeError:
+        return None
+    if not tc_id:
+        return None
+    return tc_id, args
+
+
+def parse_tool_call(body: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
+    """
+    Parse Vapi tool-calls webhook bodies.
+
+    Supports current `message.toolCallList` (documented) and legacy
+    `message.toolCalls` / OpenAI-style `function.arguments` shapes.
+    """
+    try:
+        message = body.get("message")
+        if not isinstance(message, dict):
             return None
-        raw = raw_calls[0]
-        fn = raw.get("function") or {}
-        name = str(fn.get("name") or "")
-        arguments = fn.get("arguments")
-        if isinstance(arguments, str):
-            args = json.loads(arguments)
-        elif isinstance(arguments, dict):
-            args = arguments
-        else:
-            args = {}
-        tc_id = str(raw.get("id") or "")
-        return tc_id, args if isinstance(args, dict) else {}
+
+        tool_call_list = message.get("toolCallList")
+        if isinstance(tool_call_list, list) and tool_call_list:
+            parsed = _parse_one_tool_call(tool_call_list[0])
+            if parsed:
+                return parsed
+
+        tool_with_list = message.get("toolWithToolCallList")
+        if isinstance(tool_with_list, list) and tool_with_list:
+            entry = tool_with_list[0]
+            if isinstance(entry, dict):
+                nested = entry.get("toolCall")
+                if isinstance(nested, dict):
+                    parsed = _parse_one_tool_call(nested)
+                    if parsed:
+                        return parsed
+
+        raw_calls = message.get("toolCalls") or message.get("tool_calls") or []
+        if isinstance(raw_calls, list) and raw_calls:
+            parsed = _parse_one_tool_call(raw_calls[0])
+            if parsed:
+                return parsed
+
+        return None
     except Exception:
         return None

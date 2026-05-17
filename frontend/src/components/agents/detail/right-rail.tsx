@@ -111,7 +111,7 @@ export function RightRail({ agent, onChange }: Props) {
                     {agent.phoneNumber}
                   </div>
                   <Link
-                    href="/phone-numbers"
+                    href={`/phone-numbers?agent=${encodeURIComponent(agent.id)}`}
                     className="text-muted-foreground hover:text-foreground text-xs"
                   >
                     Change
@@ -123,7 +123,7 @@ export function RightRail({ agent, onChange }: Props) {
                     Not assigned
                   </span>
                   <Link
-                    href="/phone-numbers"
+                    href={`/phone-numbers?agent=${encodeURIComponent(agent.id)}`}
                     className="text-foreground hover:underline text-xs font-medium"
                   >
                     Assign

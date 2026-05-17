@@ -16,11 +16,14 @@ import { NextResponse } from "next/server";
 import {
   createWorkflow as createVapiWorkflow,
   deleteWorkflow as deleteVapiWorkflow,
+  type VapiWorkflowPayload,
   toVapiRouteError,
   updateWorkflow as updateVapiWorkflow,
 } from "@/lib/vapi/server";
 import { compileToVapiPayload } from "@/lib/workflows/vapi-compile";
 import type { Workflow } from "@/lib/workflows/types";
+
+type SyncRequestBody = Workflow & { vapiPayload?: VapiWorkflowPayload };
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,7 +33,8 @@ type RouteCtx = { params: Promise<{ id: string }> };
 export async function POST(req: Request, ctx: RouteCtx) {
   try {
     const { id } = await ctx.params;
-    const workflow = (await req.json()) as Workflow;
+    const body = (await req.json()) as SyncRequestBody;
+    const workflow = body;
 
     if (!workflow || workflow.id !== id) {
       return NextResponse.json(
@@ -39,16 +43,22 @@ export async function POST(req: Request, ctx: RouteCtx) {
       );
     }
 
-    const compile = compileToVapiPayload(workflow);
-    if (!compile.ok) {
-      return NextResponse.json(
-        {
-          error: "Workflow has validation errors",
-          code: "workflow_invalid",
-          detail: compile.errors,
-        },
-        { status: 400 },
-      );
+    let vapiPayload: VapiWorkflowPayload;
+    if (body.vapiPayload) {
+      vapiPayload = body.vapiPayload;
+    } else {
+      const compile = compileToVapiPayload(workflow);
+      if (!compile.ok) {
+        return NextResponse.json(
+          {
+            error: "Workflow has validation errors",
+            code: "workflow_invalid",
+            detail: compile.errors,
+          },
+          { status: 400 },
+        );
+      }
+      vapiPayload = compile.payload;
     }
 
     const lastSyncedAt = new Date().toISOString();
@@ -57,7 +67,7 @@ export async function POST(req: Request, ctx: RouteCtx) {
       try {
         const response = await updateVapiWorkflow(
           workflow.vapiWorkflowId,
-          compile.payload,
+          vapiPayload,
         );
         return NextResponse.json({
           ok: true,
@@ -67,7 +77,7 @@ export async function POST(req: Request, ctx: RouteCtx) {
       } catch (err) {
         // Self-heal: if Vapi forgot about this workflow, fall back to create.
         if (err instanceof Error && /404|not.?found/i.test(err.message)) {
-          const response = await createVapiWorkflow(compile.payload);
+          const response = await createVapiWorkflow(vapiPayload);
           return NextResponse.json({
             ok: true,
             vapiWorkflowId: response.id,
@@ -79,7 +89,7 @@ export async function POST(req: Request, ctx: RouteCtx) {
       }
     }
 
-    const response = await createVapiWorkflow(compile.payload);
+    const response = await createVapiWorkflow(vapiPayload);
     return NextResponse.json({
       ok: true,
       vapiWorkflowId: response.id,
