@@ -1,4 +1,9 @@
 import { apiFetch } from "@/lib/api/client";
+import { isDemoSession } from "@/lib/demo/constants";
+import {
+  getDemoCallLogDetail,
+  getDemoCallLogs,
+} from "@/lib/demo/acme-presentation-data";
 
 export type CallLogSummary = {
   id: string;
@@ -54,6 +59,12 @@ export async function fetchCallLogs(options?: {
   limit?: number;
   agentId?: string;
 }): Promise<CallLogSummary[]> {
+  if (isDemoSession()) {
+    let rows = getDemoCallLogs();
+    if (options?.limit != null) rows = rows.slice(0, options.limit);
+    return rows;
+  }
+
   const params = new URLSearchParams();
   if (options?.days != null) params.set("days", String(options.days));
   if (options?.limit != null) params.set("limit", String(options.limit));
@@ -66,6 +77,11 @@ export async function fetchCallLogs(options?: {
 }
 
 export async function fetchCallLogDetail(callId: string): Promise<CallLogDetail> {
+  if (isDemoSession()) {
+    const detail = getDemoCallLogDetail(callId);
+    if (!detail) throw new Error("Call not found");
+    return detail;
+  }
   const encoded = encodeURIComponent(callId);
   return apiFetch<CallLogDetail>(`/api/v1/call-logs/${encoded}/`);
 }

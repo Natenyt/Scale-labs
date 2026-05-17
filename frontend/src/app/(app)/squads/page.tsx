@@ -5,6 +5,7 @@ import { ComingSoonPage } from "@/components/coming-soon-page";
 export default function SquadsPage() {
   return (
     <ComingSoonPage
+      eyebrow="Build"
       title="Squads"
       description="Run coordinated teams of voice agents with smooth handoffs between assistants."
       icon={UsersIcon}

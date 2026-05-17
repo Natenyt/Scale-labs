@@ -7,8 +7,6 @@ import {
   ChevronRightIcon,
   CircleAlertIcon,
   ClockIcon,
-  ExternalLinkIcon,
-  GitForkIcon,
   Loader2Icon,
   PlusIcon,
   Trash2Icon,
@@ -17,15 +15,10 @@ import {
 import { useCompleteNavigationWhenReady } from "@/components/navigation/navigation-pending";
 import { NewWorkflowDialog } from "@/components/workflows/new-workflow-dialog";
 import { useWorkflows } from "@/components/workflows/workflows-store";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
@@ -44,7 +37,6 @@ export default function WorkflowListPage() {
 
   const handleDelete = React.useCallback(
     (record: Workflow) => {
-      // Best-effort cleanup on Vapi, don't block local delete.
       void deleteWorkflowOnVapi(record);
       deleteWorkflow(record.id);
     },
@@ -56,25 +48,23 @@ export default function WorkflowListPage() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6 pt-2">
-      <PageHeader onCreate={openCreate} />
+    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 pt-4 md:pt-6">
+      <PageHeader
+        eyebrow="Build"
+        title="Workflows"
+        description="Visual orchestration for multi-step calls. Each saved workflow is published to the voice runtime so agents can run it on live calls."
+        actions={
+          <Button type="button" onClick={openCreate} className="h-9">
+            <PlusIcon className="size-3.5" />
+            New workflow
+          </Button>
+        }
+      />
+
       <NewWorkflowDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <Card>
-        <CardHeader className="flex flex-row items-start gap-3">
-          <div className="bg-zinc-200/10 ring-zinc-200/20 flex size-11 items-center justify-center rounded-xl text-zinc-100 ring-1">
-            <GitForkIcon className="size-5" />
-          </div>
-          <div className="grid gap-1">
-            <CardTitle>Your workflows</CardTitle>
-            <CardDescription>
-              Design a Vapi workflow on the canvas, then Save to mirror it onto
-              your Vapi workspace. Tool nodes reference the same Vapi tools your
-              integrations provisioned.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-2">
+        <div className="divide-border/40 divide-y">
           {workflows.length === 0 ? (
             <EmptyState onCreate={openCreate} />
           ) : (
@@ -86,26 +76,8 @@ export default function WorkflowListPage() {
               />
             ))
           )}
-        </CardContent>
+        </div>
       </Card>
-    </div>
-  );
-}
-
-function PageHeader({ onCreate }: { onCreate: () => void }) {
-  return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="grid gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Workflows</h1>
-        <p className="text-muted-foreground text-sm">
-          Visual orchestration for multi-step calls. Each workflow you save here
-          is mirrored to your Vapi workspace so an assistant can dispatch to it.
-        </p>
-      </div>
-      <Button type="button" onClick={onCreate} className="gap-1.5">
-        <PlusIcon className="size-4" />
-        New workflow
-      </Button>
     </div>
   );
 }
@@ -120,54 +92,44 @@ function WorkflowRow({
   const nodeCount = record.nodes.length;
   const edgeCount = record.edges.length;
   return (
-    <div className="group/row border-border/60 hover:bg-accent/30 flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 transition">
+    <div className="group/row hover:bg-muted/30 flex items-center justify-between gap-3 px-4 py-3 transition-colors">
       <div className="min-w-0">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <span className="truncate">{record.name}</span>
+          <Link
+            href={`/workflow/${record.id}`}
+            className="truncate hover:underline underline-offset-2"
+          >
+            {record.name}
+          </Link>
           <SyncBadge record={record} />
         </div>
-        <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-2 text-xs">
-          <span>
+        <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-xs">
+          <span className="tabular-nums">
             {nodeCount} node{nodeCount === 1 ? "" : "s"}
           </span>
           <span className="text-muted-foreground/40">·</span>
-          <span>
+          <span className="tabular-nums">
             {edgeCount} edge{edgeCount === 1 ? "" : "s"}
           </span>
           <span className="text-muted-foreground/40">·</span>
           <ClockIcon className="size-3" />
           <span>Updated {formatRelative(record.updatedAt)}</span>
-          {record.vapiWorkflowId ? (
-            <>
-              <span className="text-muted-foreground/40">·</span>
-              <a
-                href={`https://dashboard.vapi.ai/workflow/${record.vapiWorkflowId}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Open in Vapi
-                <ExternalLinkIcon className="size-3" />
-              </a>
-            </>
-          ) : null}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button
           variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-destructive size-8 px-0"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-destructive opacity-0 transition-opacity group-hover/row:opacity-100"
           onClick={onDelete}
           aria-label="Delete workflow"
         >
-          <Trash2Icon className="size-4" />
+          <Trash2Icon className="size-3.5" />
         </Button>
         <Button asChild variant="ghost" size="sm" className="gap-1">
           <Link href={`/workflow/${record.id}`}>
             Open
-            <ChevronRightIcon className="size-4" />
+            <ChevronRightIcon className="size-3.5" />
           </Link>
         </Button>
       </div>
@@ -179,7 +141,10 @@ function SyncBadge({ record }: { record: Workflow }) {
   const status = record.syncStatus ?? "idle";
   if (status === "syncing") {
     return (
-      <Badge variant="outline" className="gap-1 text-[10px] font-normal">
+      <Badge
+        variant="outline"
+        className="border-border/50 gap-1 text-[10px] font-normal uppercase tracking-wide"
+      >
         <Loader2Icon className="size-3 animate-spin" />
         Syncing
       </Badge>
@@ -191,50 +156,45 @@ function SyncBadge({ record }: { record: Workflow }) {
         <TooltipTrigger asChild>
           <Badge
             variant="outline"
-            className="border-destructive/40 bg-destructive/10 text-destructive gap-1 text-[10px] font-normal"
+            className="border-destructive/40 bg-destructive/10 text-destructive gap-1 text-[10px] font-normal uppercase tracking-wide"
           >
             <CircleAlertIcon className="size-3" />
             Sync error
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          {record.lastSyncError ?? "Vapi sync failed. Open and Save again."}
+          {record.lastSyncError ?? "Sync failed. Open the workflow and Save again."}
         </TooltipContent>
       </Tooltip>
     );
   }
   if (status === "synced" && record.vapiWorkflowId) {
     return (
-      <Badge
-        variant="outline"
-        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 gap-1 text-[10px] font-normal"
-      >
-        <CheckCircle2Icon className="size-3" />
-        Synced
-      </Badge>
+      <span className="text-emerald-400 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em]">
+        <span className="size-1.5 rounded-full bg-emerald-400" />
+        Published
+      </span>
     );
   }
   return (
-    <Badge
-      variant="outline"
-      className="text-muted-foreground/70 text-[10px] font-normal"
-    >
+    <span className="text-muted-foreground inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em]">
+      <span className="size-1.5 rounded-full bg-muted-foreground/50" />
       Draft
-    </Badge>
+    </span>
   );
 }
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="border-border/40 grid place-items-center gap-3 rounded-lg border border-dashed px-4 py-10 text-center">
+    <div className="grid place-items-center gap-3 px-4 py-16 text-center">
       <p className="text-sm font-medium">No workflows yet</p>
-      <p className="text-muted-foreground max-w-md text-xs">
-        A workflow chains conversation, tool, transfer and API-request nodes so
-        an agent can complete a real task. Start with a single Conversation
-        node and grow it from there.
+      <p className="text-muted-foreground max-w-md text-xs leading-relaxed">
+        A workflow chains conversation, tool, transfer and API-request nodes so an
+        agent can complete a real task. Start with a single Conversation node and grow
+        it from there.
       </p>
-      <Button type="button" onClick={onCreate} className="gap-1.5">
-        <PlusIcon className="size-4" />
+      <Button type="button" onClick={onCreate} size="sm" className="mt-2">
+        <PlusIcon className="size-3.5" />
         Create your first workflow
       </Button>
     </div>

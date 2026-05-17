@@ -433,7 +433,7 @@ export function ToolsRouteLoading() {
       <div className="grid gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Tools</h1>
         <p className="text-muted-foreground text-sm">
-          Every function tool registered with Vapi for this workspace. System
+          Every function tool registered for this workspace. System
           tools are available to standalone agents; integration tools are
           provisioned automatically when you save a Notion connection.
         </p>
@@ -481,7 +481,7 @@ export function WorkflowRouteLoading() {
           <h1 className="text-2xl font-semibold tracking-tight">Workflows</h1>
           <p className="text-muted-foreground text-sm">
             Visual orchestration for multi-step calls. Each workflow you save
-            here is mirrored to your Vapi workspace.
+            here is published to the voice runtime.
           </p>
         </div>
         <Skeleton className="h-9 w-32 shrink-0 rounded-md" />

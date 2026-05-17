@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/contexts/auth-context";
 import { hasBackendApi } from "@/lib/api/env";
+import { isDemoSession } from "@/lib/demo/constants";
 import { getAccessToken } from "@/lib/api/tokens";
 import { prefetchObservePages } from "@/lib/query/prefetch-app-data";
 
@@ -17,7 +18,9 @@ export function AppDataPrefetcher() {
   const prefetchedRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!ready || !user || !hasBackendApi() || !getAccessToken()?.trim()) {
+    const canPrefetch =
+      isDemoSession() || (hasBackendApi() && Boolean(getAccessToken()?.trim()));
+    if (!ready || !user || !canPrefetch) {
       return;
     }
     if (prefetchedRef.current) return;

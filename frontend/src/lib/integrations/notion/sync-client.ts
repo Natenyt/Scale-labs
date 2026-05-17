@@ -92,7 +92,7 @@ export async function resyncNotionTools(
 
     setSyncStatus(record.id, "synced");
     if (toastId)
-      toast.success(`Synced ${tools.length} Vapi tools`, { id: toastId });
+      toast.success(`Synced ${tools.length} workflow tools`, { id: toastId });
     return { ok: true, tools };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error";
@@ -134,15 +134,15 @@ export async function deleteNotionToolsOnVapi(
 
 function vapiErrorMessage(data: SyncResponse, status: number): string {
   if (data.code === "vapi_token_missing")
-    return "VAPI_API_KEY is not configured on the server.";
+    return "Voice API key is not configured on the server.";
   if (data.code === "vapi_webhook_base_missing")
-    return "VAPI_WEBHOOK_BASE is not configured. Set a public https URL, or DEV_PUBLIC_ORIGIN (ngrok on port 3000) in backend/.env.";
+    return "Public webhook URL is not configured. Set a reachable https URL in backend/.env.";
   if (data.code === "vapi_webhook_base_not_public")
     return (
       data.error ??
-      "Webhook URL is localhost — Vapi cannot reach it. Set DEV_PUBLIC_ORIGIN to your ngrok URL and re-sync tools."
+      "Webhook URL is not reachable from the internet. Use a public tunnel URL and re-sync tools."
     );
   if (data.code === "vapi_shared_secret_missing")
-    return "VAPI_SHARED_SECRET is not configured on the server.";
-  return data.error ?? `Vapi sync failed (HTTP ${status})`;
+    return "Webhook signing secret is not configured on the server.";
+  return data.error ?? `Tool sync failed (HTTP ${status})`;
 }

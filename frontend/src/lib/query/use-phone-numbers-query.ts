@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { hasBackendApi } from "@/lib/api/env";
+import { isDemoSession } from "@/lib/demo/constants";
 import {
   fetchPhoneNumber,
   fetchPhoneNumbers,
@@ -15,7 +16,7 @@ export function usePhoneNumbersQuery() {
   return useQuery({
     queryKey: queryKeys.phoneNumbers(),
     queryFn: fetchPhoneNumbers,
-    enabled: hasBackendApi(),
+    enabled: hasBackendApi() || isDemoSession(),
     staleTime: PHONE_NUMBERS_STALE_MS,
   });
 }
@@ -24,7 +25,7 @@ export function usePhoneNumberQuery(id: string) {
   return useQuery({
     queryKey: queryKeys.phoneNumber(id),
     queryFn: () => fetchPhoneNumber(id),
-    enabled: hasBackendApi() && Boolean(id),
+    enabled: (hasBackendApi() || isDemoSession()) && Boolean(id),
     staleTime: PHONE_NUMBERS_STALE_MS,
   });
 }

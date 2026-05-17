@@ -429,7 +429,7 @@ function validate(
       if (!id) {
         errors.push({
           code: "TOOL_REF_MISSING",
-          message: "Pick a Vapi tool for this Tool node.",
+          message: "Pick a workflow tool for this Tool node.",
           nodeId: node.id,
         });
       } else if (
@@ -439,7 +439,7 @@ function validate(
         errors.push({
           code: "TOOL_REF_MISSING",
           message:
-            "This Tool node references a Vapi tool that is no longer registered. Resync your integration and pick again.",
+            "This Tool node references a tool that is no longer registered. Resync your integration and pick again.",
           nodeId: node.id,
         });
       }

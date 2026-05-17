@@ -1,4 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
+import { isDemoSession } from "@/lib/demo/constants";
+import { getDemoPhoneNumbers } from "@/lib/demo/acme-presentation-data";
 
 export type PhoneNumberSummary = {
   id: string;
@@ -39,6 +41,8 @@ export type UpdatePhoneNumberInput = {
 };
 
 export async function fetchPhoneNumbers(): Promise<PhoneNumberSummary[]> {
+  if (isDemoSession()) return getDemoPhoneNumbers();
+
   const data = await apiFetch<{ results: PhoneNumberSummary[] }>(
     "/api/v1/phone-numbers/",
   );
@@ -46,6 +50,11 @@ export async function fetchPhoneNumbers(): Promise<PhoneNumberSummary[]> {
 }
 
 export async function fetchPhoneNumber(id: string): Promise<PhoneNumberSummary> {
+  if (isDemoSession()) {
+    const found = getDemoPhoneNumbers().find((p) => p.id === id);
+    if (!found) throw new Error("Phone number not found");
+    return found;
+  }
   const encoded = encodeURIComponent(id);
   return apiFetch<PhoneNumberSummary>(`/api/v1/phone-numbers/${encoded}/`);
 }

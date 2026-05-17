@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  CheckCircle2Icon,
   CircleAlertIcon,
   DatabaseIcon,
   Loader2Icon,
@@ -19,20 +18,12 @@ import {
 
 import { useIntegrations } from "@/components/integrations/integrations-store";
 import { useCompleteNavigationWhenReady } from "@/components/navigation/navigation-pending";
+import { PageHeader } from "@/components/page-header";
 import {
   ToolDetailSheet,
   type ToolDetail,
 } from "@/components/tools/tool-detail-sheet";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
   buildNotionToolPreviews,
   type ToolPreview,
@@ -46,10 +37,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Static system tool definitions (the 4 generic standalone-agent tools).
-// We keep their JSON schemas inline here as a preview-only artifact — the
-// actual Vapi tools are registered elsewhere (Day 9, when the agent layer
-// wires through to Vapi).
+// Static system tool definitions
 // ---------------------------------------------------------------------------
 
 type SystemTool = {
@@ -70,13 +58,11 @@ type SystemTool = {
 const SYSTEM_TOOLS: SystemTool[] = [
   {
     id: "query",
-    name: "Query (web search)",
-    description:
-      "Lets the agent look up outside facts mid-call. Backed by a dedicated research agent.",
+    name: "Query",
+    description: "Look up outside facts mid-call via a research agent.",
     icon: SearchIcon,
     preview: {
-      description:
-        "Search the public web for a fact and return a short summary.",
+      description: "Search the public web for a fact and return a short summary.",
       parameters: {
         type: "object",
         properties: {
@@ -92,8 +78,7 @@ const SYSTEM_TOOLS: SystemTool[] = [
   {
     id: "transfer_call",
     name: "Transfer call",
-    description:
-      "Hand off the live call to a human or another destination when the situation calls for it.",
+    description: "Hand the live call off to a human or another number.",
     icon: PhoneForwardedIcon,
     preview: {
       description: "Transfer the live call to a destination phone number.",
@@ -116,8 +101,7 @@ const SYSTEM_TOOLS: SystemTool[] = [
   {
     id: "send_sms",
     name: "Send SMS",
-    description:
-      "Send a short text message during or right after the call (confirmation, link, reference number).",
+    description: "Text a confirmation, link or reference number to the caller.",
     icon: MessageSquareIcon,
     preview: {
       description: "Send an SMS to the caller or a configured recipient.",
@@ -134,8 +118,7 @@ const SYSTEM_TOOLS: SystemTool[] = [
   {
     id: "voicemail",
     name: "Voicemail",
-    description:
-      "Detect voicemail and decide whether to hang up or leave a templated message.",
+    description: "Detect voicemail; hang up or leave a templated message.",
     icon: VoicemailIcon,
     preview: {
       description: "Handle voicemail detection on outbound calls.",
@@ -149,8 +132,7 @@ const SYSTEM_TOOLS: SystemTool[] = [
           },
           message: {
             type: "string",
-            description:
-              "Templated message to leave if action is leave_message.",
+            description: "Templated message to leave if action is leave_message.",
           },
         },
         required: ["action"],
@@ -204,35 +186,88 @@ export default function ToolsPage() {
     return null;
   }
 
+  const totalIntegrationTools = notionIntegrations.reduce(
+    (sum, it) => sum + (it.vapiTools?.length ?? 5),
+    0,
+  );
+
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6 pt-2">
-      <PageHeader />
-
-      <SystemToolsSection
-        onOpen={(t) =>
-          openDetail({
-            kind: "system",
-            id: t.id,
-            name: t.name,
-            description: t.description,
-            preview: t.preview,
-          })
-        }
+    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-10 pt-4 md:pt-6">
+      <PageHeader
+        eyebrow="Build"
+        title="Tools"
+        description="Function tools available to agents and workflows in this workspace."
       />
 
-      <IntegrationToolsSection
-        integrations={notionIntegrations}
-        onOpen={(integration, preview, ref) =>
-          openDetail({
-            kind: "notion",
-            integration,
-            preview,
-            vapiToolId: ref?.id ?? null,
-            lastSyncedAt: ref?.lastSyncedAt ?? null,
-          })
-        }
-        onResync={handleResync}
-      />
+      <section className="grid gap-4">
+        <SectionHeader
+          label="System"
+          title="Built-in tools"
+          meta={`${SYSTEM_TOOLS.length} available`}
+        />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {SYSTEM_TOOLS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() =>
+                openDetail({
+                  kind: "system",
+                  id: t.id,
+                  name: t.name,
+                  description: t.description,
+                  preview: t.preview,
+                })
+              }
+              className="group/tool border-border/50 bg-card hover:bg-muted/40 flex items-start gap-3 rounded-xl border p-4 text-left transition-colors"
+            >
+              <div className="bg-muted/60 text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-lg">
+                <t.icon className="size-4" />
+              </div>
+              <div className="min-w-0 grid gap-0.5">
+                <span className="text-sm font-medium">{t.name}</span>
+                <p className="text-muted-foreground line-clamp-1 text-xs">
+                  {t.description}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-4">
+        <SectionHeader
+          label="Integrations"
+          title="Auto-generated tools"
+          meta={
+            notionIntegrations.length === 0
+              ? "Connect Notion to provision"
+              : `${totalIntegrationTools} across ${notionIntegrations.length} integration${notionIntegrations.length === 1 ? "" : "s"}`
+          }
+        />
+        {notionIntegrations.length === 0 ? (
+          <EmptyIntegrationsState />
+        ) : (
+          <div className="grid gap-6">
+            {notionIntegrations.map((integration) => (
+              <IntegrationBlock
+                key={integration.id}
+                integration={integration}
+                onOpen={(preview, ref) =>
+                  openDetail({
+                    kind: "notion",
+                    integration,
+                    preview,
+                    vapiToolId: ref?.id ?? null,
+                    lastSyncedAt: ref?.lastSyncedAt ?? null,
+                  })
+                }
+                onResync={() => handleResync(integration)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       <ToolDetailSheet
         open={open}
@@ -244,119 +279,29 @@ export default function ToolsPage() {
   );
 }
 
-function PageHeader() {
+// ---------------------------------------------------------------------------
+// Subcomponents
+// ---------------------------------------------------------------------------
+
+function SectionHeader({
+  label,
+  title,
+  meta,
+}: {
+  label: string;
+  title: string;
+  meta: string;
+}) {
   return (
-    <div className="grid gap-1">
-      <h1 className="text-2xl font-semibold tracking-tight">Tools</h1>
-      <p className="text-muted-foreground text-sm">
-        Every function tool registered with Vapi for this workspace. System
-        tools are available to standalone agents; integration tools are
-        provisioned automatically when you save a Notion connection and become
-        usable inside workflows.
-      </p>
+    <div className="flex items-end justify-between gap-3">
+      <div className="grid gap-1">
+        <p className="text-muted-foreground/80 text-[11px] font-medium uppercase tracking-[0.12em]">
+          {label}
+        </p>
+        <h2 className="text-sm font-medium">{title}</h2>
+      </div>
+      <p className="text-muted-foreground text-xs tabular-nums">{meta}</p>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Section 1 — System tools
-// ---------------------------------------------------------------------------
-
-function SystemToolsSection({
-  onOpen,
-}: {
-  onOpen: (tool: SystemTool) => void;
-}) {
-  return (
-    <Card>
-      <CardHeader className="grid gap-1">
-        <CardTitle className="flex items-center gap-2">
-          System tools
-          <Badge variant="outline" className="text-[10px] font-medium uppercase tracking-wider">
-            Built in
-          </Badge>
-        </CardTitle>
-        <CardDescription>
-          The 4 generic tools available on every standalone agent. These do not
-          depend on any integration.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-2 sm:grid-cols-2">
-        {SYSTEM_TOOLS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => onOpen(t)}
-            className="border-border/60 hover:bg-accent/40 grid gap-1 rounded-lg border p-3 text-left transition"
-          >
-            <div className="flex items-center gap-2">
-              <div className="bg-muted text-muted-foreground flex size-7 items-center justify-center rounded-md">
-                <t.icon className="size-4" />
-              </div>
-              <span className="text-sm font-medium">{t.name}</span>
-            </div>
-            <p className="text-muted-foreground line-clamp-2 text-xs">
-              {t.description}
-            </p>
-          </button>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Section 2 — Integration tools
-// ---------------------------------------------------------------------------
-
-function IntegrationToolsSection({
-  integrations,
-  onOpen,
-  onResync,
-}: {
-  integrations: NotionIntegration[];
-  onOpen: (
-    integration: NotionIntegration,
-    preview: ToolPreview,
-    ref: { id: string; lastSyncedAt: string } | undefined,
-  ) => void;
-  onResync: (record: NotionIntegration) => void;
-}) {
-  return (
-    <Card>
-      <CardHeader className="grid gap-1">
-        <CardTitle className="flex items-center gap-2">
-          Integration tools
-          <Badge
-            variant="outline"
-            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[10px] font-medium uppercase tracking-wider"
-          >
-            Auto-generated
-          </Badge>
-        </CardTitle>
-        <CardDescription>
-          Each Notion integration generates 5 Vapi function tools — save, find,
-          search, update and archive — keyed to its field map. Workflows can
-          drop these directly onto the canvas.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        {integrations.length === 0 ? (
-          <EmptyIntegrationsState />
-        ) : (
-          integrations.map((integration, idx) => (
-            <React.Fragment key={integration.id}>
-              {idx > 0 && <Separator className="opacity-50" />}
-              <IntegrationBlock
-                integration={integration}
-                onOpen={onOpen}
-                onResync={onResync}
-              />
-            </React.Fragment>
-          ))
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
@@ -367,48 +312,48 @@ function IntegrationBlock({
 }: {
   integration: NotionIntegration;
   onOpen: (
-    integration: NotionIntegration,
     preview: ToolPreview,
     ref: { id: string; lastSyncedAt: string } | undefined,
   ) => void;
-  onResync: (record: NotionIntegration) => void;
+  onResync: () => void;
 }) {
   const previews = React.useMemo(
     () => buildNotionToolPreviews(integration),
     [integration],
   );
 
-  const refByKind = new Map(
-    (integration.vapiTools ?? []).map((t) => [t.kind, t]),
+  const refByKind = React.useMemo(
+    () => new Map((integration.vapiTools ?? []).map((t) => [t.kind, t])),
+    [integration.vapiTools],
   );
   const status = integration.syncStatus ?? (refByKind.size ? "synced" : "idle");
 
   return (
-    <div className="grid gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-md bg-zinc-200/10 text-[11px] font-semibold text-zinc-100 ring-1 ring-zinc-200/20">
+    <div className="border-border/50 bg-card overflow-hidden rounded-xl border">
+      <div className="border-border/40 flex items-center justify-between gap-3 border-b px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="bg-muted/60 text-foreground flex size-7 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold">
             N
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-sm font-medium">
               <span className="truncate">{integration.label}</span>
-              <StatusBadge status={status} lastError={integration.lastSyncError} />
+              <SyncStatus status={status} />
             </div>
-            <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+            <p className="text-muted-foreground flex items-center gap-1 text-[11px]">
               <DatabaseIcon className="size-3" />
               <span className="truncate">
-                {integration.databaseTitle || "Untitled"}
+                {integration.databaseTitle || "Untitled database"}
               </span>
-            </div>
+            </p>
           </div>
         </div>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
-          onClick={() => onResync(integration)}
+          onClick={onResync}
           disabled={status === "syncing"}
-          className="gap-1.5"
+          className="text-muted-foreground hover:text-foreground"
         >
           {status === "syncing" ? (
             <Loader2Icon className="size-3.5 animate-spin" />
@@ -418,128 +363,98 @@ function IntegrationBlock({
           Resync
         </Button>
       </div>
-
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="divide-border/40 grid divide-y">
         {previews.map((preview) => {
           const ref = refByKind.get(preview.kind);
           const Icon = KIND_ICON[preview.kind];
           return (
-            <button
-              key={preview.kind}
-              type="button"
-              onClick={() => onOpen(integration, preview, ref)}
-              className="border-border/60 hover:bg-accent/40 grid gap-1.5 rounded-lg border p-3 text-left transition"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div
+            <li key={preview.kind}>
+              <button
+                type="button"
+                onClick={() => onOpen(preview, ref)}
+                className="group/row hover:bg-muted/40 flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors"
+              >
+                <span
+                  className={cn(
+                    "bg-muted/40 flex size-7 shrink-0 items-center justify-center rounded-md",
+                    KIND_TONE[preview.kind],
+                  )}
+                >
+                  <Icon className="size-3.5" />
+                </span>
+                <span className="text-sm font-medium">
+                  {NOTION_TOOL_LABELS[preview.kind].name}
+                </span>
+                <span className="text-muted-foreground/60 hidden flex-1 truncate text-[11px] sm:block">
+                  {NOTION_TOOL_LABELS[preview.kind].description}
+                </span>
+                <span
+                  className={cn(
+                    "ml-auto inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em] sm:ml-0",
+                    ref ? "text-emerald-400" : "text-muted-foreground",
+                  )}
+                >
+                  <span
                     className={cn(
-                      "bg-muted flex size-7 items-center justify-center rounded-md",
-                      KIND_TONE[preview.kind],
+                      "size-1.5 rounded-full",
+                      ref ? "bg-emerald-400" : "bg-muted-foreground/50",
                     )}
-                  >
-                    <Icon className="size-4" />
-                  </div>
-                  <span className="text-sm font-medium">
-                    {NOTION_TOOL_LABELS[preview.kind].name}
-                  </span>
-                </div>
-                {ref ? (
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[10px] font-normal"
-                  >
-                    Live
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="outline"
-                    className="text-muted-foreground/70 text-[10px] font-normal"
-                  >
-                    Pending
-                  </Badge>
-                )}
-              </div>
-              <p className="text-muted-foreground line-clamp-2 text-xs">
-                {NOTION_TOOL_LABELS[preview.kind].description}
-              </p>
-              <div className="text-muted-foreground/80 mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
-                <span className="font-mono">
-                  {Object.keys(preview.parameters.properties).length} params
+                  />
+                  {ref ? "Live" : "Pending"}
                 </span>
-                <span className="text-muted-foreground/40">·</span>
-                <span className="truncate font-mono">
-                  {preview.functionName}
-                </span>
-              </div>
-            </button>
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
 }
 
-function StatusBadge({
+function SyncStatus({
   status,
-  lastError,
 }: {
   status: "idle" | "syncing" | "synced" | "error";
-  lastError?: string;
 }) {
   if (status === "syncing") {
     return (
-      <Badge variant="outline" className="gap-1 text-[10px] font-normal">
-        <Loader2Icon className="size-3 animate-spin" />
+      <span className="text-muted-foreground inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em]">
+        <Loader2Icon className="size-2.5 animate-spin" />
         Syncing
-      </Badge>
+      </span>
     );
   }
   if (status === "error") {
     return (
-      <Badge
-        variant="outline"
-        title={lastError ?? "Sync failed"}
-        className="border-destructive/40 bg-destructive/10 text-destructive gap-1 text-[10px] font-normal"
-      >
-        <CircleAlertIcon className="size-3" />
+      <span className="text-destructive inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em]">
+        <CircleAlertIcon className="size-2.5" />
         Sync error
-      </Badge>
+      </span>
     );
   }
   if (status === "synced") {
     return (
-      <Badge
-        variant="outline"
-        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 gap-1 text-[10px] font-normal"
-      >
-        <CheckCircle2Icon className="size-3" />
+      <span className="text-emerald-400 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em]">
+        <span className="size-1.5 rounded-full bg-emerald-400" />
         Synced
-      </Badge>
+      </span>
     );
   }
-  return (
-    <Badge
-      variant="outline"
-      className="text-muted-foreground/70 text-[10px] font-normal"
-    >
-      Not synced
-    </Badge>
-  );
+  return null;
 }
 
 function EmptyIntegrationsState() {
   return (
-    <div className="border-border/40 grid place-items-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center">
-      <DatabaseIcon className="text-muted-foreground/60 size-6" />
+    <div className="border-border/40 bg-card/30 grid place-items-center gap-2 rounded-xl border border-dashed px-4 py-12 text-center">
+      <DatabaseIcon className="text-muted-foreground/60 size-5" />
       <p className="text-sm font-medium">No integration tools yet</p>
-      <p className="text-muted-foreground max-w-md text-xs">
-        Connect a Notion database from Integrations. Saving the connection
-        provisions 5 Vapi function tools mapped to your column types.
+      <p className="text-muted-foreground max-w-md text-xs leading-relaxed">
+        Connect a Notion database from Integrations — saving the connection
+        provisions five workflow tools mapped to your column types.
       </p>
-      <Button asChild variant="outline" size="sm" className="mt-1 gap-1.5">
+      <Button asChild variant="outline" size="sm" className="mt-2">
         <Link href="/integrations/notion/new">
-          <PlusIcon className="size-4" />
+          <PlusIcon className="size-3.5" />
           Add Notion connection
         </Link>
       </Button>

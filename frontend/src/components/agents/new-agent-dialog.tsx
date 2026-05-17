@@ -182,9 +182,9 @@ export function NewAgentDialog({ open, onOpenChange }: Props) {
             {hasBackendApi() && !getAccessToken()?.trim() ? (
               <p className="text-destructive border-destructive/30 bg-destructive/5 rounded-md border px-3 py-2 text-xs leading-relaxed">
                 Sign in with your <strong>Scale Labs</strong> account to create an agent. The
-                backend then creates the voice assistant in Vapi using the{" "}
+                backend then creates the voice assistant using the{" "}
                 <strong>platform&apos;s</strong> server configuration — your users never need
-                their own Vapi API key.
+                their own API keys.
               </p>
             ) : null}
           </div>

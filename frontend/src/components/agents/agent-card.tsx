@@ -20,7 +20,6 @@ import {
   CardContent,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -49,47 +48,39 @@ export function AgentCard({ agent }: { agent: Agent }) {
   const { byId } = useIntegrations();
   const integration = agent.integrationId ? byId(agent.integrationId) : null;
   const language = LANGUAGE_LABELS[agent.language];
+  const isLive = agent.status === "live";
 
   return (
-    <Card className="group/agent transition hover:ring-foreground/20">
+    <Card className="group/agent transition-colors hover:bg-muted/20">
       <CardHeader>
         <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              "bg-sidebar-primary/15 text-sidebar-primary flex size-10 shrink-0 items-center justify-center rounded-lg",
-            )}
-          >
-            <BotIcon className="size-5" />
+          <div className="bg-muted/60 text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-lg">
+            <BotIcon className="size-4" />
           </div>
-          <div className="grid flex-1 gap-1">
-            <CardTitle className="flex items-center gap-2">
+          <div className="grid min-w-0 flex-1 gap-1">
+            <div className="flex items-center gap-2">
               <Link
                 href={`/agents/${agent.id}`}
-                className="truncate hover:underline"
+                className="truncate text-sm font-medium hover:underline underline-offset-2"
               >
                 {agent.name}
               </Link>
-              <Badge
-                variant="outline"
+              <span
                 className={cn(
-                  "h-5 gap-1 px-1.5 text-[10px] font-medium uppercase tracking-wider",
-                  agent.status === "live"
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                    : "border-muted-foreground/30 text-muted-foreground",
+                  "inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em]",
+                  isLive ? "text-emerald-400" : "text-muted-foreground",
                 )}
               >
                 <span
                   className={cn(
                     "size-1.5 rounded-full",
-                    agent.status === "live"
-                      ? "bg-emerald-400"
-                      : "bg-muted-foreground/60",
+                    isLive ? "bg-emerald-400" : "bg-muted-foreground/50",
                   )}
                 />
                 {agent.status}
-              </Badge>
-            </CardTitle>
-            <p className="text-muted-foreground line-clamp-2 text-xs">
+              </span>
+            </div>
+            <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
               {agent.description || "No description yet."}
             </p>
           </div>
@@ -98,7 +89,7 @@ export function AgentCard({ agent }: { agent: Agent }) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-muted-foreground -mr-1.5 -mt-1 size-7 shrink-0 opacity-60 hover:opacity-100"
+                className="text-muted-foreground -mr-1.5 -mt-1 size-7 shrink-0 opacity-0 transition-opacity group-hover/agent:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
                 aria-label="Open agent menu"
               >
                 <MoreHorizontalIcon className="size-4" />
@@ -137,33 +128,43 @@ export function AgentCard({ agent }: { agent: Agent }) {
       </CardHeader>
 
       <CardContent className="flex flex-wrap gap-1.5">
-        <Badge variant="secondary" className="font-normal">
-          {language.flag} · {language.label}
+        <Badge
+          variant="outline"
+          className="border-border/50 text-muted-foreground bg-transparent font-normal"
+        >
+          {language.flag} {language.label}
         </Badge>
         {integration && (
-          <Badge variant="secondary" className="font-normal capitalize">
+          <Badge
+            variant="outline"
+            className="border-border/50 text-muted-foreground bg-transparent font-normal capitalize"
+          >
             {integration.kind}
           </Badge>
         )}
         {agent.tags.slice(0, 2).map((tag) => (
-          <Badge key={tag} variant="outline" className="font-normal">
+          <Badge
+            key={tag}
+            variant="outline"
+            className="border-border/50 text-muted-foreground bg-transparent font-normal"
+          >
             {tag}
           </Badge>
         ))}
       </CardContent>
 
-      <CardFooter className="justify-between text-xs">
-        <div className="text-muted-foreground flex items-center gap-3">
+      <CardFooter className="border-border/40 bg-transparent justify-between text-xs">
+        <div className="text-muted-foreground flex items-center gap-2 tabular-nums">
           <span>{formatRelative(agent.lastCallAt)}</span>
           <span className="text-muted-foreground/40">·</span>
-          <span>{agent.minutesThisMonth} min this month</span>
+          <span>{agent.minutesThisMonth}m this month</span>
         </div>
         <Link
           href={`/agents/${agent.id}`}
-          className="text-foreground/80 hover:text-foreground inline-flex items-center gap-1 font-medium"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-medium transition-colors"
         >
           Open
-          <ArrowUpRightIcon className="size-3.5" />
+          <ArrowUpRightIcon className="size-3" />
         </Link>
       </CardFooter>
     </Card>

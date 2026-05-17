@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useAgentsState } from "@/components/agents/agents-store";
 import { useCompleteNavigationWhenReady } from "@/components/navigation/navigation-pending";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -75,33 +76,34 @@ export default function MetricsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 pt-2">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Metrics</h1>
-          <p className="text-muted-foreground text-sm">
-            Voice usage and cost for agents in your workspace.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={isRefreshing}
-          onClick={() => void refresh()}
-        >
-          <RefreshCwIcon
-            className={cn("size-4", isRefreshing && "animate-spin")}
-          />
-          Refresh
-        </Button>
-      </div>
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 pt-4 md:pt-6">
+      <PageHeader
+        eyebrow="Observe"
+        title="Metrics"
+        description="Voice usage and cost for agents in your workspace."
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isRefreshing}
+            onClick={() => void refresh()}
+          >
+            <RefreshCwIcon
+              className={cn("size-3.5", isRefreshing && "animate-spin")}
+            />
+            Refresh
+          </Button>
+        }
+      />
 
-      <div className="border-border/60 bg-card/30 flex flex-wrap items-end gap-4 rounded-xl border p-4">
+      <div className="flex flex-wrap items-end gap-4">
         <div className="grid gap-1.5">
-          <Label className="text-xs">Time range</Label>
+          <Label className="text-muted-foreground/80 text-[10px] font-medium uppercase tracking-[0.1em]">
+            Time range
+          </Label>
           <Select value={days} onValueChange={setDays}>
-            <SelectTrigger className="h-9 w-[140px] text-xs">
+            <SelectTrigger className="bg-card/50 h-9 w-[140px] text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -112,9 +114,11 @@ export default function MetricsPage() {
           </Select>
         </div>
         <div className="grid gap-1.5">
-          <Label className="text-xs">Grouped by</Label>
+          <Label className="text-muted-foreground/80 text-[10px] font-medium uppercase tracking-[0.1em]">
+            Grouped by
+          </Label>
           <Select value={step} onValueChange={setStep}>
-            <SelectTrigger className="h-9 w-[120px] text-xs">
+            <SelectTrigger className="bg-card/50 h-9 w-[120px] text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -124,13 +128,15 @@ export default function MetricsPage() {
           </Select>
         </div>
         <div className="grid min-w-[200px] gap-1.5">
-          <Label className="text-xs">Assistant</Label>
+          <Label className="text-muted-foreground/80 text-[10px] font-medium uppercase tracking-[0.1em]">
+            Assistant
+          </Label>
           <Select
             value={agentId || "__all__"}
             onValueChange={(v) => setAgentId(v === "__all__" ? "" : v)}
             disabled={!agentsReady}
           >
-            <SelectTrigger className="h-9 text-xs">
+            <SelectTrigger className="bg-card/50 h-9 text-xs">
               <SelectValue placeholder="All assistants" />
             </SelectTrigger>
             <SelectContent>

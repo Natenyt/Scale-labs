@@ -4,64 +4,46 @@ import Link from "next/link";
 import { ArrowRightIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { useWorkspaceBilling } from "@/lib/billing/use-workspace-billing";
+import { getPlanById } from "@/lib/mock/billing";
 import { cn } from "@/lib/utils";
-import {
-  CURRENT_PLAN,
-  CURRENT_USAGE,
-  PLANS,
-} from "@/lib/mock/billing";
 
 export function PlanUsageCard({
   voiceMinutesLast30Days,
-  agentsInUse,
-  workflowsInUse,
-  phoneNumbersInUse,
-  integrationsConnected,
   className,
 }: {
-  voiceMinutesLast30Days: number | null;
-  agentsInUse: number;
-  workflowsInUse: number;
-  phoneNumbersInUse: number;
-  integrationsConnected: number;
+  voiceMinutesLast30Days?: number | null;
   className?: string;
 }) {
-  const plan = PLANS.find((p) => p.id === CURRENT_PLAN) ?? PLANS[1];
-  const included = plan.includedMinutes;
+  const billing = useWorkspaceBilling();
+  const plan = getPlanById(billing.planId) ?? getPlanById("scale")!;
+  const included = billing.minutesIncluded;
   const used =
     voiceMinutesLast30Days != null
       ? Math.round(voiceMinutesLast30Days)
-      : CURRENT_USAGE.minutesUsed;
+      : billing.minutesUsed;
   const hasCap = included > 0;
   const pct = hasCap ? Math.min(100, Math.round((used / included) * 100)) : 0;
   const remaining = hasCap ? Math.max(0, included - used) : null;
 
   return (
-    <Card
-      className={cn(
-        "relative overflow-hidden border-primary/15 bg-gradient-to-br from-primary/[0.07] via-card to-card",
-        className,
-      )}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-primary/10 blur-3xl"
-      />
-      <CardHeader className="relative pb-2">
+    <Card className={cn("flex flex-col", className)}>
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-              Your plan
+          <div className="grid gap-1.5">
+            <p className="text-muted-foreground/80 text-[11px] font-medium uppercase tracking-[0.12em]">
+              Plan
             </p>
-            <CardTitle className="text-xl font-semibold tracking-tight">
-              {plan.name}
-            </CardTitle>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {plan.priceMonthly}
-              <span className="text-muted-foreground/80"> · {plan.perMinute}</span>
-            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg font-semibold tracking-tight">
+                {plan.name}
+              </span>
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {plan.priceMonthly}
+              </span>
+            </div>
           </div>
           <Button asChild variant="outline" size="sm" className="shrink-0">
             <Link href="/billing">
@@ -71,28 +53,28 @@ export function PlanUsageCard({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="relative grid gap-5">
+      <CardContent className="flex flex-1 flex-col gap-5">
         {hasCap ? (
-          <div className="grid gap-2">
-            <div className="flex items-end justify-between gap-2">
-              <div>
-                <p className="text-3xl font-semibold tabular-nums tracking-tight">
+          <div className="grid gap-3">
+            <div className="flex items-end justify-between gap-3">
+              <div className="grid gap-0.5">
+                <p className="text-[34px] font-semibold leading-none tabular-nums tracking-[-0.02em]">
                   {remaining!.toLocaleString()}
                 </p>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-muted-foreground text-xs">
                   minutes left this period
                 </p>
               </div>
-              <p className="text-muted-foreground text-right text-xs tabular-nums">
-                {used.toLocaleString()} / {included.toLocaleString()} used
-              </p>
+              <div className="text-right">
+                <p className="text-foreground text-sm font-medium tabular-nums">
+                  {pct}%
+                </p>
+                <p className="text-muted-foreground text-[11px] tabular-nums">
+                  {used.toLocaleString()} / {included.toLocaleString()}
+                </p>
+              </div>
             </div>
-            <Progress value={pct} className="h-2" />
-            <p className="text-muted-foreground text-[11px] leading-snug">
-              {voiceMinutesLast30Days != null
-                ? "Usage reflects voice minutes in the last 30 days from your live call data."
-                : "Sample usage until billing metering is connected to your workspace."}
-            </p>
+            <Progress value={pct} className="h-1.5" />
           </div>
         ) : (
           <p className="text-muted-foreground text-sm leading-relaxed">
@@ -100,25 +82,24 @@ export function PlanUsageCard({
           </p>
         )}
 
-        <dl className="border-border/60 grid grid-cols-2 gap-3 border-t pt-4 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-muted-foreground text-xs">Agents</dt>
-            <dd className="font-medium tabular-nums">{agentsInUse}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground text-xs">Workflows</dt>
-            <dd className="font-medium tabular-nums">{workflowsInUse}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground text-xs">Phone numbers</dt>
-            <dd className="font-medium tabular-nums">{phoneNumbersInUse}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground text-xs">Integrations</dt>
-            <dd className="font-medium tabular-nums">{integrationsConnected}</dd>
-          </div>
+        <dl className="border-border/40 mt-auto grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 text-sm sm:grid-cols-4">
+          <UsageStat label="Agents" value={billing.agentsInUse} />
+          <UsageStat label="Workflows" value={billing.workflowsInUse} />
+          <UsageStat label="Numbers" value={billing.numbersInUse} />
+          <UsageStat label="Integrations" value={billing.integrationsConnected} />
         </dl>
       </CardContent>
     </Card>
+  );
+}
+
+function UsageStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="grid gap-0.5">
+      <dt className="text-muted-foreground/80 text-[10px] font-medium uppercase tracking-[0.1em]">
+        {label}
+      </dt>
+      <dd className="text-base font-medium tabular-nums">{value}</dd>
+    </div>
   );
 }

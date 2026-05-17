@@ -1,4 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
+import { isDemoSession } from "@/lib/demo/constants";
+import { getDemoMetrics } from "@/lib/demo/acme-presentation-data";
 
 export type ChartSeriesMeta = { key: string; label: string };
 
@@ -31,6 +33,18 @@ export type UnsuccessfulCall = {
   statusLabel: string;
 };
 
+/** Build a time-series chart block from KPI sparkline points (dashboard call volume). */
+export function chartBlockFromSparkline(
+  points: Array<{ date: string; value: number }>,
+  valueKey = "calls",
+  label = "Calls",
+): ChartBlock {
+  return {
+    data: points.map((p) => ({ date: p.date, [valueKey]: p.value })),
+    series: [{ key: valueKey, label }],
+  };
+}
+
 export type MetricsDashboard = {
   kpis: MetricsKpis;
   charts: {
@@ -59,6 +73,8 @@ export async function fetchMetrics(options?: {
   /** Bypass Django metrics cache (use on explicit Refresh). */
   fresh?: boolean;
 }): Promise<MetricsDashboard> {
+  if (isDemoSession()) return getDemoMetrics();
+
   const params = new URLSearchParams();
   if (options?.days != null) params.set("days", String(options.days));
   if (options?.step) params.set("step", options.step);

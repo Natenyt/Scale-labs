@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasBackendApi } from "@/lib/api/env";
+import { isDemoSession } from "@/lib/demo/constants";
 import { useMetricsQuery } from "@/lib/query/use-metrics-query";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +50,8 @@ export function MetricsPageBody({
     agentId: agentId || undefined,
   });
 
-  const ready = !hasBackendApi() || Boolean(data) || Boolean(error);
+  const ready =
+    isDemoSession() || !hasBackendApi() || Boolean(data) || Boolean(error);
 
   React.useLayoutEffect(() => {
     onReadyChange(ready);
@@ -191,7 +193,7 @@ export function MetricsPageBody({
 
       {data.meta.callsSampled >= data.meta.callsSampleLimit ? (
         <p className="text-muted-foreground text-center text-xs">
-          Charts use up to {data.meta.callsSampleLimit} recent org calls plus Vapi analytics.
+          Charts use up to {data.meta.callsSampleLimit} recent organization calls.
           Run more tests or narrow the date range for accuracy.
         </p>
       ) : null}

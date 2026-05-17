@@ -78,7 +78,7 @@ export function WorkflowInspector({
           {workflowSettings ? (
             <Field
               label="Global prompt"
-              hint="Sent as Vapi top-level globalPrompt. Applied across every conversation node — useful for tone, language and guard-rails."
+              hint="Workflow-wide system prompt. Applied across every conversation node — useful for tone, language, and guardrails."
             >
               <Textarea
                 value={workflowSettings.globalPrompt}
@@ -225,7 +225,7 @@ function ConversationBody({
     <div className="grid gap-3">
       <Field
         label="First message"
-        hint="Optional. Spoken when the node activates (Vapi messagePlan.firstMessage)."
+        hint="Optional. Spoken when this node activates."
       >
         <Textarea
           value={node.firstMessage ?? ""}
@@ -541,7 +541,7 @@ function ToolBody({
       <div className="border-border/40 grid gap-2 rounded-md border bg-background/40 p-3">
         <div className="flex items-center gap-2 text-xs font-medium">
           <AlertCircleIcon className="text-amber-300 size-3.5" />
-          No Vapi tools registered yet
+          No workflow tools registered yet
         </div>
         <p className="text-muted-foreground/90 text-[11px]">
           Tool nodes call tools you registered when configuring an integration.
@@ -574,7 +574,7 @@ function ToolBody({
     <div className="grid gap-3">
       <Field
         label="Tool"
-        hint="Pick a tool already registered in your Vapi workspace. Re-syncing an integration refreshes this list."
+        hint="Pick a tool from your integrations. Re-syncing an integration refreshes this list."
       >
         <Select value={selected} onValueChange={pick}>
           <SelectTrigger size="sm" className="text-xs">
@@ -593,7 +593,7 @@ function ToolBody({
         <div className="border-border/40 grid gap-1 rounded-md border bg-background/40 p-2 text-[11px]">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="font-normal">
-              Vapi tool
+              Workflow tool
             </Badge>
             <code className="font-mono text-[10px]">
               {node.toolRef.vapiToolId.slice(0, 12)}…
@@ -620,7 +620,7 @@ function TransferBody({
     <div className="grid gap-3">
       <Field
         label="Destination"
-        hint="E.164 phone number, SIP URI, or Vapi destination handle."
+        hint="E.164 phone number or SIP URI."
       >
         <Input
           value={node.destination ?? ""}
@@ -654,7 +654,7 @@ function EndCallBody() {
     <div className="grid gap-3">
       <p className="text-muted-foreground text-[11px] leading-relaxed">
         End node terminates the call when reached. If you want a closing line,
-        put it in the conversation node that points to End — Vapi&apos;s End
+        put it in the conversation node that points to End — the End
         node does not speak on its own.
       </p>
     </div>
@@ -931,7 +931,7 @@ export function WorkflowEdgeInspector({
               <p className="text-muted-foreground/80 text-[10px]">
                 Natural-language guidance. The LLM picks this edge when the
                 description matches the user&apos;s intent. Your text appears
-                on the connector (e.g. &quot;user said yes&quot;), like Vapi.
+                on the connector (e.g. &quot;user said yes&quot;).
               </p>
             </>
           ) : (

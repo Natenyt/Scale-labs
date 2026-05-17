@@ -5,6 +5,7 @@ import { ComingSoonPage } from "@/components/coming-soon-page";
 export default function MonitoringPage() {
   return (
     <ComingSoonPage
+      eyebrow="Observe"
       title="Monitoring"
       description="Live health, alerts, and quality signals for your voice operations."
       icon={ActivityIcon}

@@ -90,7 +90,7 @@ export async function syncWorkflowWithVapiPayload(
   setSyncStatus(record.id, "syncing");
   const toastId = options.silent
     ? undefined
-    : toast.loading(`Saving "${record.name}" to Vapi...`);
+    : toast.loading(`Publishing "${record.name}"...`);
 
   try {
     const { data, okHttp } = await postVapiSync(record, vapiPayload);
@@ -110,7 +110,7 @@ export async function syncWorkflowWithVapiPayload(
         : record.vapiWorkflowId
           ? "Updated"
           : "Created";
-      toast.success(`${verb} workflow on Vapi`, { id: toastId });
+      toast.success(`${verb} workflow`, { id: toastId });
     }
     return { ok: true, vapiWorkflowId: vid };
   } catch (err) {
@@ -132,7 +132,7 @@ export async function syncWorkflow(
   const { setSyncStatus } = mutators;
   const toastId = options.silent
     ? undefined
-    : toast.loading(`Saving "${record.name}" to Vapi...`);
+    : toast.loading(`Publishing "${record.name}"...`);
 
   try {
     const compile = compileToVapiPayload(record, {
@@ -182,7 +182,7 @@ export async function syncWorkflow(
         : record.vapiWorkflowId
           ? "Updated"
           : "Created";
-      toast.success(`${verb} workflow on Vapi`, { id: toastId });
+      toast.success(`${verb} workflow`, { id: toastId });
     }
     return { ok: true, vapiWorkflowId: vid };
   } catch (err) {
@@ -215,12 +215,12 @@ export async function deleteWorkflowOnVapi(
 
 function vapiErrorMessage(data: SyncResponse, status: number): string {
   if (data.code === "vapi_token_missing")
-    return "VAPI_API_KEY is not configured on the server.";
+    return "Voice API key is not configured on the server.";
   if (data.code === "workflow_invalid") {
     const first = Array.isArray(data.detail)
       ? (data.detail[0] as CompileError | undefined)?.message
       : undefined;
     return first ?? "Workflow has validation errors.";
   }
-  return data.error ?? `Vapi workflow sync failed (HTTP ${status})`;
+  return data.error ?? `Workflow sync failed (HTTP ${status})`;
 }

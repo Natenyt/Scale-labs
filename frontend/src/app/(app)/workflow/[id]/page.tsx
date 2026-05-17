@@ -8,7 +8,6 @@ import {
   ArrowLeftIcon,
   CheckCircle2Icon,
   CircleAlertIcon,
-  ExternalLinkIcon,
   GitForkIcon,
   Loader2Icon,
   MicIcon,
@@ -127,7 +126,7 @@ export default function WorkflowDetailPage() {
         onSave={() => void onSave()}
         onOpenTest={() => {
           if (!workflow.vapiWorkflowId?.trim()) {
-            toast.error("Save and sync this workflow to Vapi before testing.");
+            toast.error("Save and publish this workflow before testing.");
             return;
           }
           setTestMode(true);
@@ -217,16 +216,12 @@ function Toolbar({
       </div>
       <div className="flex items-center gap-2">
         {workflow.vapiWorkflowId ? (
-          <Button asChild variant="ghost" size="sm" className="gap-1">
-            <a
-              href={`https://dashboard.vapi.ai/workflow/${workflow.vapiWorkflowId}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open in Vapi
-              <ExternalLinkIcon className="size-3.5" />
-            </a>
-          </Button>
+          <Badge
+            variant="outline"
+            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[10px] font-normal"
+          >
+            Published
+          </Badge>
         ) : null}
         <Button
           type="button"
@@ -249,7 +244,7 @@ function Toolbar({
           ) : (
             <SaveIcon className="size-4" />
           )}
-          {workflow.vapiWorkflowId ? "Save & sync" : "Save"}
+          {workflow.vapiWorkflowId ? "Save & publish" : "Save"}
         </Button>
       </div>
     </div>

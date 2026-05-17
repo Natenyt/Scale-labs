@@ -2,11 +2,20 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-
 import { apiFetch } from "@/lib/api/client";
 import { clearClientStores } from "@/lib/api/clear-client-stores";
 import { hasBackendApi } from "@/lib/api/env";
 import { hydrateStoresFromDjango } from "@/lib/api/django";
+import { hydrateDemoWorkspace } from "@/lib/demo/acme-presentation-data";
+import {
+  DEMO_USER,
+  isDemoCredentials,
+  isDemoSession,
+  isDemoWorkspaceUser,
+  setDemoSession,
+} from "@/lib/demo/constants";
+import { prefetchObservePages } from "@/lib/query/prefetch-app-data";
+import { getQueryClient } from "@/lib/query/query-client";
 import {
   clearTokens,
   getAccessToken,
@@ -23,6 +32,7 @@ export type AuthUser = {
 type AuthContextValue = {
   user: AuthUser | null;
   ready: boolean;
+  isDemoWorkspace: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => void;
@@ -44,9 +54,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<AuthUser | null>(null);
   const [ready, setReady] = React.useState(false);
 
+  const enterDemoWorkspace = React.useCallback(async () => {
+    setDemoSession(true);
+    setUser(DEMO_USER);
+    setActiveOrgId("-1");
+    hydrateDemoWorkspace();
+    await prefetchObservePages(getQueryClient());
+  }, []);
+
+  const isDemoWorkspace = isDemoWorkspaceUser(user);
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (isDemoSession()) {
+        if (!cancelled) {
+          setUser(DEMO_USER);
+          setActiveOrgId("-1");
+          hydrateDemoWorkspace();
+          setReady(true);
+        }
+        return;
+      }
+
       if (!hasBackendApi()) {
         if (!cancelled) setReady(true);
         return;
@@ -91,6 +121,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = React.useCallback(
     async (email: string, password: string) => {
+      if (isDemoCredentials(email, password)) {
+        clearClientStores();
+        await enterDemoWorkspace();
+        router.push("/dashboard");
+        return;
+      }
+
+      if (!hasBackendApi()) {
+        throw new Error("Use the presentation account or configure the API URL.");
+      }
+
       clearClientStores();
       const res = await apiFetch<{
         access: string;
@@ -110,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await hydrateStoresFromDjango();
       router.push("/dashboard");
     },
-    [router],
+    [enterDemoWorkspace, router],
   );
 
   const register = React.useCallback(
@@ -145,8 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const value = React.useMemo(
-    () => ({ user, ready, login, register, logout }),
-    [user, ready, login, register, logout],
+    () => ({ user, ready, isDemoWorkspace, login, register, logout }),
+    [user, ready, isDemoWorkspace, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

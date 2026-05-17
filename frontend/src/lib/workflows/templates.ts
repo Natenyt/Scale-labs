@@ -24,7 +24,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     id: "blank",
     name: "Blank workflow",
     description:
-      "Start from a single Start node. Design your flow on the canvas, then Save to push to Vapi.",
+      "Start from a single Start node. Design your flow on the canvas, then Save to publish.",
     defaultWorkflowName: "Untitled workflow",
   },
   {

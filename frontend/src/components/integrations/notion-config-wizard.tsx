@@ -750,7 +750,7 @@ function DatabaseStep({
             Use existing
           </Badge>
           <Badge variant="outline" className="text-muted-foreground/60">
-            Create new — coming Day 9
+            Create new
           </Badge>
         </div>
 

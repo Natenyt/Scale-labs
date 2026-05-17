@@ -14,6 +14,7 @@ import { WorkspaceHealthCard } from "@/components/dashboard/workspace-health-car
 import { useIntegrations } from "@/components/integrations/integrations-store";
 import { MetricKpiCard } from "@/components/metrics/metric-kpi-card";
 import { MetricsAreaChart } from "@/components/metrics/metrics-chart-card";
+import { PageHeader } from "@/components/page-header";
 import { QueryErrorCard } from "@/components/query/query-error-card";
 import { useWorkflows } from "@/components/workflows/workflows-store";
 import {
@@ -25,11 +26,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { hasBackendApi } from "@/lib/api/env";
+import { isDemoSession } from "@/lib/demo/constants";
 import {
   greetingForHour,
   useActiveOrgName,
 } from "@/lib/dashboard/use-active-org-name";
-import { fetchMetrics } from "@/lib/metrics/metrics-api";
+import { chartBlockFromSparkline, fetchMetrics } from "@/lib/metrics/metrics-api";
 import { fetchCallLogs } from "@/lib/calls/call-logs-api";
 import { fetchPhoneNumbers } from "@/lib/phone-numbers/phone-numbers-api";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -91,7 +93,10 @@ export default function DashboardPage() {
     !phonesQuery.data;
 
   const pageReady =
-    !hasBackendApi() || allFailed || (!metricsLoading && !logsLoading);
+    isDemoSession() ||
+    !hasBackendApi() ||
+    allFailed ||
+    (!metricsLoading && !logsLoading);
 
   useCompleteNavigationWhenReady(pageReady);
 
@@ -135,13 +140,13 @@ export default function DashboardPage() {
     }
   }, [queryClient]);
 
-  if (!hasBackendApi()) {
+  if (!hasBackendApi() && !isDemoSession()) {
     return <QueryErrorCard message="API is not configured." />;
   }
 
   if (allFailed) {
     return (
-      <div className="flex flex-1 flex-col gap-6 pt-2">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 pt-4 md:pt-6">
         <QueryErrorCard message="Could not load dashboard data. Try refresh." />
       </div>
     );
@@ -152,38 +157,32 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 pt-2">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{greeting}</h1>
-          <p className="text-muted-foreground text-sm">
-            Here is how <span className="text-foreground font-medium">{orgName}</span> is
-            performing — usage, calls, and workspace health at a glance.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={isRefreshing}
-          onClick={() => void refresh()}
-        >
-          <RefreshCwIcon
-            className={cn("size-4", isRefreshing && "animate-spin")}
-          />
-          Refresh
-        </Button>
-      </div>
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 pt-4 md:pt-6">
+      <PageHeader
+        eyebrow={orgName}
+        title={greeting}
+        description="Usage, calls, and workspace health at a glance."
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isRefreshing}
+            onClick={() => void refresh()}
+          >
+            <RefreshCwIcon
+              className={cn("size-3.5", isRefreshing && "animate-spin")}
+            />
+            Refresh
+          </Button>
+        }
+      />
 
-      <div className={cn("grid gap-8", isFetching && "opacity-90 transition-opacity")}>
+      <div className={cn("grid gap-10", isFetching && "opacity-90 transition-opacity")}>
         <section className="grid gap-4 lg:grid-cols-3">
           <PlanUsageCard
             className="lg:col-span-2"
             voiceMinutesLast30Days={kpis?.totalMinutes ?? null}
-            agentsInUse={voiceAgentCount}
-            workflowsInUse={workflows.length}
-            phoneNumbersInUse={phoneNumberCount}
-            integrationsConnected={integrations.length}
           />
           <WorkspaceHealthCard
             agents={voiceAgentCount}
@@ -206,7 +205,7 @@ export default function DashboardPage() {
         ) : kpis ? (
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricKpiCard
-              title="Call minutes (30 days)"
+              title="Call minutes · 30d"
               value={kpis.totalMinutesLabel}
               accent="minutes"
               sparkline={kpis.sparklines.minutes}
@@ -224,7 +223,7 @@ export default function DashboardPage() {
               sparkline={kpis.sparklines.cost}
             />
             <MetricKpiCard
-              title="Avg. cost per call"
+              title="Avg · cost per call"
               value={kpis.avgCostLabel}
               accent="avg"
               sparkline={kpis.sparklines.cost}
@@ -237,13 +236,17 @@ export default function DashboardPage() {
             <DashboardChartSkeleton className="lg:col-span-2" />
           ) : metrics ? (
             <MetricsAreaChart
-              title="Call volume over time"
-              block={metrics.charts.callsByType}
+              title="Call volume"
+              block={chartBlockFromSparkline(
+                metrics.kpis.sparklines.calls,
+                "calls",
+                "Calls",
+              )}
               yLabel="Calls"
               className="lg:col-span-2"
             />
           ) : (
-            <div className="bg-muted/30 min-h-[280px] rounded-xl lg:col-span-2" />
+            <div className="bg-muted/20 border-border/40 min-h-[280px] rounded-xl border lg:col-span-2" />
           )}
           <div className="grid gap-4">
             <QuickActionsCard />

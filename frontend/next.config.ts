@@ -22,6 +22,8 @@ function devAllowedOrigins(): string[] {
 }
 
 const nextConfig: NextConfig = {
+  /** Hide Next.js dev overlay / build indicator in the corner during local dev. */
+  devIndicators: false,
   allowedDevOrigins: devAllowedOrigins(),
   /** Keep trailing slashes on /api/v1/* (Django APPEND_SLASH). Proxy is app/api/v1/[...path]/route.ts */
   skipTrailingSlashRedirect: true,

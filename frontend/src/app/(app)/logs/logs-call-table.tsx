@@ -157,13 +157,7 @@ export function LogsCallTable({
                     Copy call ID
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <a
-                      href={`https://dashboard.vapi.ai/calls/${row.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open in Vapi
-                    </a>
+                    <Link href={`/logs/${row.id}`}>View call details</Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

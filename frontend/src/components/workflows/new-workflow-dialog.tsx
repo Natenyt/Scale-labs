@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { hasBackendApi } from "@/lib/api/env";
+import { isDemoSession } from "@/lib/demo/constants";
 import { getAccessToken } from "@/lib/api/tokens";
 import {
   CreateWorkflowError,
@@ -111,7 +112,7 @@ export function NewWorkflowDialog({ open, onOpenChange }: Props) {
       const synced = templateId !== "blank";
       toast.success(
         synced
-          ? `"${workflow.name}" is on Vapi and ready to edit.`
+          ? `"${workflow.name}" is published and ready to edit.`
           : `"${workflow.name}" is ready — open the canvas to design your flow.`,
       );
       onOpenChange(false);
@@ -125,7 +126,8 @@ export function NewWorkflowDialog({ open, onOpenChange }: Props) {
     }
   };
 
-  const needsSignIn = hasBackendApi() && !getAccessToken()?.trim();
+  const needsSignIn =
+    hasBackendApi() && !getAccessToken()?.trim() && !isDemoSession();
   const isTemplate = templateId !== "blank";
 
   return (
@@ -137,7 +139,7 @@ export function NewWorkflowDialog({ open, onOpenChange }: Props) {
           </DialogTitle>
           <DialogDescription>
             {step === "template"
-              ? "Start blank or use a pre-built Vapi template. Templates are created on Vapi immediately."
+              ? "Start blank or use a pre-built template. Templates are published immediately."
               : `Starting from "${template.name}". You can rename and edit everything on the canvas.`}
           </DialogDescription>
         </DialogHeader>
@@ -187,19 +189,19 @@ export function NewWorkflowDialog({ open, onOpenChange }: Props) {
             </div>
             {isTemplate ? (
               <p className="text-muted-foreground text-xs leading-relaxed">
-                This workflow will be created in your workspace and pushed to Vapi
-                with the full template graph (nodes, edges, and prompts).
+                This workflow will be created in your workspace and published with
+                the full template graph (nodes, edges, and prompts).
               </p>
             ) : (
               <p className="text-muted-foreground text-xs leading-relaxed">
                 A blank workflow starts with one Start node. Use Save on the canvas
-                when you are ready to mirror it to Vapi.
+                when you are ready to publish it.
               </p>
             )}
             {needsSignIn ? (
               <p className="text-destructive border-destructive/30 bg-destructive/5 rounded-md border px-3 py-2 text-xs leading-relaxed">
                 Sign in with your <strong>Scale Labs</strong> account to create
-                workflows. The platform uses the server&apos;s Vapi configuration.
+                workflows. Use the presentation account on the login page for demos.
               </p>
             ) : null}
           </div>
@@ -231,7 +233,7 @@ export function NewWorkflowDialog({ open, onOpenChange }: Props) {
                 ) : null}
                 {creating
                   ? isTemplate
-                    ? "Creating on Vapi…"
+                    ? "Publishing…"
                     : "Creating workflow…"
                   : isTemplate
                     ? "Create workflow"

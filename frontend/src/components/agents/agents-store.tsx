@@ -10,6 +10,8 @@ import { fetchOrgAgentsFromApi } from "@/lib/agents/fetch-agents";
 import { registerAgentsHydrate } from "@/lib/agents/hydrate-bridge";
 import { apiFetch } from "@/lib/api/client";
 import { hasBackendApi } from "@/lib/api/env";
+import { isDemoSession } from "@/lib/demo/constants";
+import { getDemoAgents } from "@/lib/demo/acme-presentation-data";
 import { getAccessToken } from "@/lib/api/tokens";
 import {
   type Agent,
@@ -82,6 +84,20 @@ export function AgentsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
+    // Demo workspace: read agents directly from the demo dataset on every
+    // mount. The hydrate bridge can race the provider on the first paint
+    // (auth-context fires applyAgentsHydrate before this provider mounts and
+    // registers its callback), so do not rely on it for the demo path.
+    if (isDemoSession()) {
+      startTransition(() => {
+        setAgents(getDemoAgents());
+        setRemote(true);
+        setApiAgentsLoadFailed(false);
+        setReady(true);
+      });
+      return;
+    }
+
     if (!hasBackendApi()) {
       startTransition(() => {
         setAgents([]);

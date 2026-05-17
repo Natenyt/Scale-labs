@@ -16,6 +16,7 @@ import {
 
 import { useIntegrations } from "@/components/integrations/integrations-store";
 import { useCompleteNavigationWhenReady } from "@/components/navigation/navigation-pending";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +60,7 @@ const KINDS: KindCard[] = [
     letter: "N",
     tone: "bg-zinc-200/10 text-zinc-100 ring-zinc-200/20",
     description:
-      "Bind agents to a Notion database. Agents load context at the start of a call, and workflows get 5 auto-generated tools (save, find, search, update, delete) wired to Vapi.",
+      "Bind agents to a Notion database. Agents load context at the start of a call, and workflows get five auto-generated tools (save, find, search, update, delete) for your flows.",
     status: "live",
   },
   {
@@ -67,7 +68,7 @@ const KINDS: KindCard[] = [
     name: "HubSpot",
     letter: "H",
     tone: "bg-orange-500/15 text-orange-300 ring-orange-500/20",
-    description: "Pull contacts and deals from HubSpot. Coming after Day 9.",
+    description: "Pull contacts and deals from HubSpot into agent context.",
     status: "coming-soon",
   },
   {
@@ -124,35 +125,39 @@ export default function IntegrationsPage() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6 pt-2">
-      <PageHeader />
+    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 pt-4 md:pt-6">
+      <PageHeader
+        eyebrow="Connect"
+        title="Integrations"
+        description="Connect your CRM so agents can read context at the start of a call. Saving an integration provisions workflow tools your agents can call during a conversation."
+      />
 
       <Card>
-        <CardHeader className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start">
+        <CardHeader className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start">
           <div
             className={cn(
-              "flex size-11 items-center justify-center rounded-xl text-sm font-semibold ring-1",
+              "flex size-10 items-center justify-center rounded-lg text-sm font-semibold",
               notionCard.tone,
             )}
           >
             {notionCard.letter}
           </div>
           <div className="grid gap-1">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               {notionCard.name}
-              <Badge
-                variant="outline"
-                className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-medium uppercase tracking-wider text-emerald-300"
-              >
+              <span className="text-emerald-400 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em]">
+                <span className="size-1.5 rounded-full bg-emerald-400" />
                 Live
-              </Badge>
+              </span>
             </CardTitle>
-            <CardDescription>{notionCard.description}</CardDescription>
+            <CardDescription className="text-xs leading-relaxed">
+              {notionCard.description}
+            </CardDescription>
           </div>
           <NotionAddButton remainingSlots={notionRemainingSlots} />
         </CardHeader>
 
-        <CardContent className="grid gap-2">
+        <CardContent className="divide-border/40 -mx-0 grid gap-0 divide-y px-0 pb-0">
           {notionConnections.length === 0 ? (
             <NotionEmptyState />
           ) : (
@@ -168,26 +173,35 @@ export default function IntegrationsPage() {
         </CardContent>
       </Card>
 
+      <div className="grid gap-1">
+        <p className="text-muted-foreground/80 text-[11px] font-medium uppercase tracking-[0.12em]">
+          Coming soon
+        </p>
+        <h2 className="text-sm font-medium">More integrations</h2>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {KINDS.slice(1).map((k) => (
           <Card key={k.kind} className="opacity-70">
             <CardHeader className="flex flex-row items-start gap-3">
               <div
                 className={cn(
-                  "flex size-11 items-center justify-center rounded-xl text-sm font-semibold ring-1",
+                  "flex size-10 items-center justify-center rounded-lg text-sm font-semibold",
                   k.tone,
                 )}
               >
                 {k.letter}
               </div>
               <div className="grid gap-1">
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-sm">
                   {k.name}
-                  <Badge variant="outline" className="text-[10px] font-medium uppercase tracking-wider">
+                  <Badge
+                    variant="outline"
+                    className="border-border/50 text-[10px] font-medium uppercase tracking-wider"
+                  >
                     Coming soon
                   </Badge>
                 </CardTitle>
-                <CardDescription className="text-xs">
+                <CardDescription className="text-xs leading-relaxed">
                   {k.description}
                 </CardDescription>
               </div>
@@ -199,42 +213,29 @@ export default function IntegrationsPage() {
   );
 }
 
-function PageHeader() {
-  return (
-    <div className="grid gap-1">
-      <h1 className="text-2xl font-semibold tracking-tight">Integrations</h1>
-      <p className="text-muted-foreground text-sm">
-        Connect your CRM so agents can read context at the start of a call.
-        Saving an integration provisions a matching set of Vapi tools your
-        workflows can call.
-      </p>
-    </div>
-  );
-}
-
 function NotionAddButton({ remainingSlots }: { remainingSlots: number }) {
   const disabled = remainingSlots <= 0;
-  const button = (
-    <Button asChild={!disabled} disabled={disabled} className="gap-1.5">
-      {disabled ? (
-        <span>
-          <PlusIcon className="size-4" />
-          Add Notion connection
-        </span>
-      ) : (
+
+  if (!disabled) {
+    return (
+      <Button asChild className="shrink-0 gap-1.5">
         <Link href="/integrations/notion/new">
           <PlusIcon className="size-4" />
           Add Notion connection
         </Link>
-      )}
-    </Button>
-  );
+      </Button>
+    );
+  }
 
-  if (!disabled) return button;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span tabIndex={0}>{button}</span>
+        <span className="inline-flex shrink-0">
+          <Button disabled className="gap-1.5">
+            <PlusIcon className="size-4" />
+            Add Notion connection
+          </Button>
+        </span>
       </TooltipTrigger>
       <TooltipContent>
         {`Standard plan limit of ${NOTION_INTEGRATION_LIMIT} Notion connections reached. Upgrade to enterprise to add more.`}
@@ -255,22 +256,26 @@ function NotionRow({
   const fields = record.fieldMap.length;
   const tools = record.vapiTools?.length ?? 0;
   return (
-    <div className="group/row border-border/60 hover:bg-accent/30 flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 transition">
+    <div className="group/row hover:bg-muted/30 flex items-center justify-between gap-3 px-4 py-3 transition-colors">
       <div className="min-w-0">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <CheckCircle2Icon className="size-3.5 text-emerald-400" />
+          <CheckCircle2Icon className="size-3.5 text-emerald-400 shrink-0" />
           <span className="truncate">{record.label}</span>
           <SyncBadge record={record} />
         </div>
-        <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-2 text-xs">
-          <span className="truncate">{record.databaseTitle}</span>
+        <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-xs">
+          {record.databaseTitle ? (
+            <>
+              <span className="truncate">{record.databaseTitle}</span>
+              <span className="text-muted-foreground/40">·</span>
+            </>
+          ) : null}
+          <span className="tabular-nums">{fields} fields</span>
           <span className="text-muted-foreground/40">·</span>
-          <span>{fields} fields</span>
-          <span className="text-muted-foreground/40">·</span>
-          <span>
+          <span className="tabular-nums">
             {tools > 0
-              ? `${tools} Vapi tool${tools === 1 ? "" : "s"}`
-              : "No Vapi tools yet"}
+              ? `${tools} tool${tools === 1 ? "" : "s"}`
+              : "No tools yet"}
           </span>
           <span className="text-muted-foreground/40">·</span>
           <ClockIcon className="size-3" />
@@ -282,34 +287,34 @@ function NotionRow({
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              size="sm"
-              className="size-8 px-0"
+              size="icon-sm"
+              className="text-muted-foreground"
               onClick={onResync}
               disabled={record.syncStatus === "syncing"}
-              aria-label="Resync Vapi tools"
+              aria-label="Resync workflow tools"
             >
               {record.syncStatus === "syncing" ? (
-                <Loader2Icon className="size-4 animate-spin" />
+                <Loader2Icon className="size-3.5 animate-spin" />
               ) : (
-                <RefreshCwIcon className="size-4" />
+                <RefreshCwIcon className="size-3.5" />
               )}
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Resync Vapi tools</TooltipContent>
+          <TooltipContent>Resync workflow tools</TooltipContent>
         </Tooltip>
         <Button
           variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-destructive size-8 px-0"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-destructive opacity-0 transition-opacity group-hover/row:opacity-100"
           onClick={onDelete}
           aria-label="Remove integration"
         >
-          <Trash2Icon className="size-4" />
+          <Trash2Icon className="size-3.5" />
         </Button>
         <Button asChild variant="ghost" size="sm" className="gap-1">
           <Link href={`/integrations/notion/${record.id}`}>
             Configure
-            <ChevronRightIcon className="size-4" />
+            <ChevronRightIcon className="size-3.5" />
           </Link>
         </Button>
       </div>
@@ -321,7 +326,10 @@ function SyncBadge({ record }: { record: NotionIntegration }) {
   const status = record.syncStatus ?? (record.vapiTools?.length ? "synced" : "idle");
   if (status === "syncing") {
     return (
-      <Badge variant="outline" className="gap-1 text-[10px] font-normal">
+      <Badge
+        variant="outline"
+        className="border-border/50 gap-1 text-[10px] font-normal uppercase tracking-wide"
+      >
         <Loader2Icon className="size-3 animate-spin" />
         Syncing
       </Badge>
@@ -333,47 +341,45 @@ function SyncBadge({ record }: { record: NotionIntegration }) {
         <TooltipTrigger asChild>
           <Badge
             variant="outline"
-            className="border-destructive/40 bg-destructive/10 text-destructive gap-1 text-[10px] font-normal"
+            className="border-destructive/40 bg-destructive/10 text-destructive gap-1 text-[10px] font-normal uppercase tracking-wide"
           >
             <CircleAlertIcon className="size-3" />
             Sync error
           </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          {record.lastSyncError ?? "Vapi sync failed. Try Resync."}
+          {record.lastSyncError ?? "Tool sync failed. Try Resync."}
         </TooltipContent>
       </Tooltip>
     );
   }
   if (status === "synced") {
     return (
-      <Badge
-        variant="outline"
-        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300 gap-1 text-[10px] font-normal"
-      >
-        <CheckCircle2Icon className="size-3" />
+      <span className="text-emerald-400 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em]">
+        <span className="size-1.5 rounded-full bg-emerald-400" />
         Synced
-      </Badge>
+      </span>
     );
   }
   return (
-    <Badge variant="outline" className="text-muted-foreground/70 text-[10px] font-normal">
+    <span className="text-muted-foreground/70 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.1em]">
+      <span className="size-1.5 rounded-full bg-muted-foreground/40" />
       Not synced
-    </Badge>
+    </span>
   );
 }
 
 function NotionEmptyState() {
   return (
-    <div className="border-border/40 grid place-items-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center">
+    <div className="grid place-items-center gap-2 px-4 py-12 text-center">
       <p className="text-sm font-medium">No Notion connections yet</p>
-      <p className="text-muted-foreground max-w-md text-xs">
+      <p className="text-muted-foreground max-w-md text-xs leading-relaxed">
         Add an internal-integration token from{" "}
         <a
           href="https://www.notion.so/profile/integrations"
           target="_blank"
           rel="noreferrer"
-          className="text-foreground underline inline-flex items-center gap-1"
+          className="text-foreground underline underline-offset-2 inline-flex items-center gap-1"
         >
           notion.so/profile/integrations
           <ExternalLinkIcon className="size-3" />

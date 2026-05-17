@@ -97,7 +97,7 @@ export function ToolDetailSheet({
                     ) : (
                       <RefreshCwIcon className="size-4" />
                     )}
-                    Resync with Vapi
+                    Resync tools
                   </Button>
                 </SheetFooter>
               </>
@@ -127,7 +127,7 @@ function NotionToolBody({
           },
           { label: "Database", value: integration.databaseTitle || "Untitled" },
           {
-            label: "Vapi tool id",
+            label: "Tool id",
             value: vapiToolId ?? "Not synced",
             mono: true,
             muted: !vapiToolId,

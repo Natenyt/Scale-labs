@@ -131,7 +131,7 @@ export function WorkflowTestPanel({
       } else if (callState.status === "error") {
         setStatus(callState.message);
       } else {
-        setStatus("Save and sync this workflow to Vapi first.");
+        setStatus("Save and publish this workflow first.");
       }
       return;
     }
@@ -239,7 +239,7 @@ export function WorkflowTestPanel({
       <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
         {!voiceSynced ? (
           <p className="text-destructive text-xs leading-relaxed">
-            Sync this workflow to Vapi before testing.
+            Save and publish this workflow before testing.
           </p>
         ) : null}
 

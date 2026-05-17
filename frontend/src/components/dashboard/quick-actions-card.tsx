@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import {
+  ArrowUpRightIcon,
   BarChart3Icon,
   BotIcon,
   PhoneIcon,
   ScrollTextIcon,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 const ACTIONS = [
   {
@@ -42,27 +42,26 @@ export function QuickActionsCard() {
   return (
     <Card size="sm">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Quick actions</CardTitle>
+        <p className="text-muted-foreground/80 text-[11px] font-medium uppercase tracking-[0.12em]">
+          Quick actions
+        </p>
       </CardHeader>
-      <CardContent className="grid gap-2">
+      <CardContent className="grid gap-0.5">
         {ACTIONS.map((action) => (
-          <Button
+          <Link
             key={action.href}
-            variant="outline"
-            size="sm"
-            className="h-auto justify-start gap-3 px-3 py-2.5 text-left"
-            asChild
+            href={action.href}
+            className="group/action hover:bg-muted/40 -mx-2 flex items-center gap-3 rounded-md px-2 py-2 transition-colors"
           >
-            <Link href={action.href}>
-              <action.icon className="text-muted-foreground size-4 shrink-0" />
-              <span className="grid gap-0.5">
-                <span className="text-sm font-medium">{action.label}</span>
-                <span className="text-muted-foreground text-[11px] font-normal">
-                  {action.description}
-                </span>
+            <action.icon className="text-muted-foreground size-4 shrink-0" />
+            <span className="min-w-0 flex-1 grid gap-0.5">
+              <span className="text-sm font-medium leading-tight">{action.label}</span>
+              <span className="text-muted-foreground text-[11px] leading-tight">
+                {action.description}
               </span>
-            </Link>
-          </Button>
+            </span>
+            <ArrowUpRightIcon className="text-muted-foreground/0 group-hover/action:text-muted-foreground size-3.5 transition-colors" />
+          </Link>
         ))}
       </CardContent>
     </Card>

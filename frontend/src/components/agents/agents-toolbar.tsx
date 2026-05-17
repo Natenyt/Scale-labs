@@ -22,36 +22,34 @@ type Props = {
   filter: AgentsFilter;
   onFilterChange: (next: AgentsFilter) => void;
   onCreate: () => void;
+  showCreate?: boolean;
 };
 
-export function AgentsToolbar({ filter, onFilterChange, onCreate }: Props) {
+export function AgentsToolbar({
+  filter,
+  onFilterChange,
+  onCreate,
+  showCreate = true,
+}: Props) {
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Agents</h1>
-        <p className="text-muted-foreground text-sm">
-          Voice agents that talk to your customers, anchored to your CRM.
-        </p>
+      <div className="relative w-full md:max-w-sm">
+        <SearchIcon className="text-muted-foreground absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2" />
+        <Input
+          placeholder="Search agents…"
+          value={filter.query}
+          onChange={(e) => onFilterChange({ ...filter, query: e.target.value })}
+          className="bg-card/50 h-9 pl-8 text-sm"
+        />
       </div>
-      <div className="flex flex-col gap-2 md:flex-row md:items-center">
-        <div className="relative">
-          <SearchIcon className="text-muted-foreground absolute left-2.5 top-1/2 size-4 -translate-y-1/2" />
-          <Input
-            placeholder="Search agents..."
-            value={filter.query}
-            onChange={(e) =>
-              onFilterChange({ ...filter, query: e.target.value })
-            }
-            className="pl-8 md:w-56"
-          />
-        </div>
+      <div className="flex items-center gap-2">
         <Select
           value={filter.language}
           onValueChange={(v) =>
             onFilterChange({ ...filter, language: v as AgentsFilter["language"] })
           }
         >
-          <SelectTrigger className="md:w-36">
+          <SelectTrigger className="h-9 w-[140px] bg-card/50">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -67,7 +65,7 @@ export function AgentsToolbar({ filter, onFilterChange, onCreate }: Props) {
             onFilterChange({ ...filter, status: v as AgentsFilter["status"] })
           }
         >
-          <SelectTrigger className="md:w-32">
+          <SelectTrigger className="h-9 w-[120px] bg-card/50">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -76,10 +74,12 @@ export function AgentsToolbar({ filter, onFilterChange, onCreate }: Props) {
             <SelectItem value="draft">Draft</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={onCreate}>
-          <PlusIcon className="size-4" />
-          New agent
-        </Button>
+        {showCreate ? (
+          <Button onClick={onCreate} className="h-9">
+            <PlusIcon className="size-3.5" />
+            New agent
+          </Button>
+        ) : null}
       </div>
     </div>
   );

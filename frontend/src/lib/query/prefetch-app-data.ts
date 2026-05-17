@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import { fetchCallLogs } from "@/lib/calls/call-logs-api";
 import { hasBackendApi } from "@/lib/api/env";
+import { isDemoSession } from "@/lib/demo/constants";
 import { fetchMetrics } from "@/lib/metrics/metrics-api";
 import { fetchPhoneNumbers } from "@/lib/phone-numbers/phone-numbers-api";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -17,7 +18,7 @@ const PHONE_NUMBERS_STALE_MS = 2 * 60 * 1000;
 
 /** Warm caches for dashboard + common Observe/Connect pages (non-blocking). */
 export function prefetchObservePages(queryClient: QueryClient): void {
-  if (!hasBackendApi()) return;
+  if (!hasBackendApi() && !isDemoSession()) return;
 
   void queryClient.prefetchQuery({
     queryKey: queryKeys.metrics({ days: DASHBOARD_METRICS_DAYS, step: "day" }),
@@ -43,7 +44,7 @@ export function prefetchObservePages(queryClient: QueryClient): void {
 }
 
 export function prefetchMetricsPage(queryClient: QueryClient): void {
-  if (!hasBackendApi()) return;
+  if (!hasBackendApi() && !isDemoSession()) return;
   void queryClient.prefetchQuery({
     queryKey: queryKeys.metrics({ days: DASHBOARD_METRICS_DAYS, step: "day" }),
     queryFn: () => fetchMetrics({ days: DASHBOARD_METRICS_DAYS, step: "day" }),
@@ -52,7 +53,7 @@ export function prefetchMetricsPage(queryClient: QueryClient): void {
 }
 
 export function prefetchLogsPage(queryClient: QueryClient): void {
-  if (!hasBackendApi()) return;
+  if (!hasBackendApi() && !isDemoSession()) return;
   void queryClient.prefetchQuery({
     queryKey: queryKeys.callLogs({ days: DEFAULT_LOGS_DAYS }),
     queryFn: () => fetchCallLogs({ days: DEFAULT_LOGS_DAYS }),
@@ -61,7 +62,7 @@ export function prefetchLogsPage(queryClient: QueryClient): void {
 }
 
 export function prefetchPhoneNumbersPage(queryClient: QueryClient): void {
-  if (!hasBackendApi()) return;
+  if (!hasBackendApi() && !isDemoSession()) return;
   void queryClient.prefetchQuery({
     queryKey: queryKeys.phoneNumbers(),
     queryFn: fetchPhoneNumbers,

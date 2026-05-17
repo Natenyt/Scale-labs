@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowRightIcon } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import type { CallLogSummary } from "@/lib/calls/call-logs-api";
 
 function formatStarted(iso: string | null): string {
@@ -30,10 +31,11 @@ function formatStarted(iso: string | null): string {
   }
 }
 
-function typeBadgeVariant(type: string): "default" | "secondary" | "outline" {
-  if (type === "Web") return "secondary";
-  if (type === "Inbound") return "outline";
-  return "default";
+function typeClass(type: string): string {
+  if (type === "Web") return "text-muted-foreground";
+  if (type === "Inbound") return "text-emerald-300";
+  if (type === "Outbound") return "text-sky-300";
+  return "text-muted-foreground";
 }
 
 export function RecentCallsCard({ calls }: { calls: CallLogSummary[] }) {
@@ -41,20 +43,30 @@ export function RecentCallsCard({ calls }: { calls: CallLogSummary[] }) {
 
   return (
     <Card className="flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-        <div>
-          <CardTitle className="text-sm font-medium">Recent calls</CardTitle>
-          <p className="text-muted-foreground text-xs">Last 14 days</p>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+        <div className="grid gap-0.5">
+          <p className="text-muted-foreground/80 text-[11px] font-medium uppercase tracking-[0.12em]">
+            Recent calls
+          </p>
+          <p className="text-foreground text-sm font-medium">Last 14 days</p>
         </div>
-        <Button asChild variant="link" size="sm" className="h-auto px-0 text-xs">
-          <Link href="/logs">View all</Link>
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-foreground -mr-1"
+        >
+          <Link href="/logs">
+            View all
+            <ArrowRightIcon className="size-3" />
+          </Link>
         </Button>
       </CardHeader>
-      <CardContent className="pb-4">
+      <CardContent className="px-0 pb-2">
         {calls.length === 0 ? (
           <p className="text-muted-foreground py-10 text-center text-sm">
             No calls yet. Open an agent and use{" "}
-            <Link href="/agents" className="text-foreground font-medium underline">
+            <Link href="/agents" className="text-foreground font-medium underline underline-offset-2">
               Test
             </Link>{" "}
             to place your first call.
@@ -62,36 +74,46 @@ export function RecentCallsCard({ calls }: { calls: CallLogSummary[] }) {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">When</TableHead>
-                <TableHead className="text-xs">Agent</TableHead>
-                <TableHead className="text-xs">Type</TableHead>
-                <TableHead className="text-right text-xs">Duration</TableHead>
-                <TableHead className="text-right text-xs">Cost</TableHead>
+              <TableRow className="border-border/40 hover:bg-transparent">
+                <TableHead className="text-muted-foreground/80 px-4 text-[10px] font-medium uppercase tracking-[0.1em]">
+                  When
+                </TableHead>
+                <TableHead className="text-muted-foreground/80 text-[10px] font-medium uppercase tracking-[0.1em]">
+                  Agent
+                </TableHead>
+                <TableHead className="text-muted-foreground/80 text-[10px] font-medium uppercase tracking-[0.1em]">
+                  Type
+                </TableHead>
+                <TableHead className="text-muted-foreground/80 text-right text-[10px] font-medium uppercase tracking-[0.1em]">
+                  Duration
+                </TableHead>
+                <TableHead className="text-muted-foreground/80 text-right text-[10px] font-medium uppercase tracking-[0.1em] pr-4">
+                  Cost
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {calls.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer"
+                  className="border-border/40 hover:bg-muted/30 cursor-pointer"
                   onClick={() => router.push(`/logs/${row.id}`)}
                 >
-                  <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
+                  <TableCell className="text-muted-foreground px-4 text-xs whitespace-nowrap">
                     {formatStarted(row.startedAt)}
                   </TableCell>
-                  <TableCell className="max-w-[140px] truncate text-sm font-medium">
+                  <TableCell className="max-w-[180px] truncate text-sm font-medium">
                     {row.resourceName}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={typeBadgeVariant(row.type)} className="text-[10px]">
+                    <span className={cn("text-[11px] font-medium uppercase tracking-wide", typeClass(row.type))}>
                       {row.type}
-                    </Badge>
+                    </span>
                   </TableCell>
                   <TableCell className="text-right text-xs tabular-nums">
                     {row.durationLabel}
                   </TableCell>
-                  <TableCell className="text-right text-xs tabular-nums">
+                  <TableCell className="pr-4 text-right text-xs tabular-nums">
                     {row.costLabel}
                   </TableCell>
                 </TableRow>

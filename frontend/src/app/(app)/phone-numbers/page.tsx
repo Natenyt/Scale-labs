@@ -15,6 +15,7 @@ import { toast } from "sonner";
 
 import { useCompleteNavigationWhenReady } from "@/components/navigation/navigation-pending";
 import { AddPhoneNumberDialog } from "@/components/phone-numbers/add-phone-number-dialog";
+import { PageHeader } from "@/components/page-header";
 import { QueryErrorCard } from "@/components/query/query-error-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -244,33 +245,32 @@ export default function PhoneNumbersPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 pt-2">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Phone numbers</h1>
-          <p className="text-muted-foreground text-sm">
-            Numbers that receive and place calls for your agents and workflows.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isFetching}
-            onClick={() => void refetch()}
-          >
-            <RefreshCwIcon
-              className={cn("size-4", isFetching && "animate-spin")}
-            />
-            Refresh
-          </Button>
-          <Button type="button" size="sm" onClick={() => setAddOpen(true)}>
-            <PlusIcon className="size-4" />
-            Add number
-          </Button>
-        </div>
-      </div>
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 pt-4 md:pt-6">
+      <PageHeader
+        eyebrow="Connect"
+        title="Phone numbers"
+        description="Numbers that receive and place calls for your agents and workflows."
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isFetching}
+              onClick={() => void refetch()}
+            >
+              <RefreshCwIcon
+                className={cn("size-3.5", isFetching && "animate-spin")}
+              />
+              Refresh
+            </Button>
+            <Button type="button" size="sm" onClick={() => setAddOpen(true)}>
+              <PlusIcon className="size-3.5" />
+              Add number
+            </Button>
+          </>
+        }
+      />
 
       <PhoneNumbersList
         initialAgentId={initialAgentId}

@@ -3,6 +3,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { hasBackendApi } from "@/lib/api/env";
+import { isDemoSession } from "@/lib/demo/constants";
 import { fetchMetrics } from "@/lib/metrics/metrics-api";
 import { queryKeys } from "@/lib/query/query-keys";
 
@@ -22,7 +23,7 @@ export function useMetricsQuery(options: {
         step,
         agentId: agentId || undefined,
       }),
-    enabled: hasBackendApi(),
+    enabled: hasBackendApi() || isDemoSession(),
     staleTime: METRICS_STALE_MS,
     placeholderData: keepPreviousData,
   });
