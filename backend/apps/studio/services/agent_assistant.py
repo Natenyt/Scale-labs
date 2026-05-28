@@ -39,6 +39,61 @@ def _default_elevenlabs_voice_id() -> str:
     return "21m00Tcm4TlvDq8ikWAM"
 
 
+# Map Scale Labs catalog ids (`v_*`) to real ElevenLabs voice ids.
+# All voices are ElevenLabs Multilingual v2, which covers EN + RU + UZ from
+# the same voiceId — the language tab in the studio is a UX grouping, not
+# a different TTS provider. Reuse across languages is intentional (the same
+# voice can speak any of the three; the UI just curates which appear where).
+_EL_RACHEL = "21m00Tcm4TlvDq8ikWAM"
+_EL_ADAM = "pNInz6obpZtJ3jQNfsvB"
+_EL_BELLA = "EXAVITQu4vr4xnSDxMaL"
+_EL_ANTONI = "ErXwobaYiN019PkySvjV"
+_EL_LILY = "pFZP5JQG7iQjIQuC4Bku"
+_EL_DANIEL = "onwK4e9ZLuTAKqWW03F9"
+_EL_CHARLOTTE = "XB0fDUnXU5powFXDhCwa"
+_EL_GEORGE = "JBFqnCBsd6RMkjVDRZzb"
+_EL_DOMI = "AZnzlk1XvdvUeBnXmlld"
+_EL_ELLI = "MF3mGyEYCl7XYWbV9V6O"
+_EL_ARNOLD = "VR6AewLTigWG4xSOukaG"
+_EL_SAM = "yoZ06aMxZJJ28mfd3POQ"
+_EL_JESSICA = "cgSgspJ2msm6clMCkdW9"
+_EL_CHARLIE = "IKne3meq5aSn9XLyUdCD"
+_EL_BRIAN = "nPczCjzI2devNBz1zQrb"
+_EL_CHRIS = "iP95p4xoKVk53GoZ742B"
+
+SCALE_VOICE_MAP: dict[str, str] = {
+    # English
+    "v_emma": _EL_BELLA,
+    "v_oliver": _EL_ADAM,
+    "v_aria": _EL_RACHEL,
+    "v_marcus": _EL_ANTONI,
+    "v_sophie": _EL_LILY,
+    "v_james": _EL_DANIEL,
+    # Russian
+    "v_alena": _EL_CHARLOTTE,
+    "v_filipp": _EL_GEORGE,
+    "v_jane": _EL_DOMI,
+    "v_omazh": _EL_ELLI,
+    "v_zahar": _EL_ARNOLD,
+    "v_ermil": _EL_SAM,
+    # Uzbek
+    "v_nigora": _EL_JESSICA,
+    "v_bekhzod": _EL_CHARLIE,
+    "v_madina": _EL_CHARLOTTE,
+    "v_azamat": _EL_BRIAN,
+    "v_dilnoza": _EL_BELLA,
+    "v_jasur": _EL_CHRIS,
+}
+
+
+def _elevenlabs_voice_block(voice_id: str) -> dict[str, Any]:
+    return {
+        "provider": "11labs",
+        "voiceId": voice_id,
+        "model": "eleven_multilingual_v2",
+    }
+
+
 def _language_code(config: dict[str, Any]) -> str:
     lang = str(config.get("language") or "en").strip().lower()
     if lang in ("en", "ru", "uz"):
@@ -57,21 +112,28 @@ def _transcriber_for_language(lang: str) -> dict[str, Any]:
 
 def _voice_block(config: dict[str, Any]) -> dict[str, Any]:
     """
-    Vapi blank template uses built-in Vapi voice (e.g. Elliot). Scale UI uses internal `v_*`
-    placeholders — map those to the same dashboard default unless user supplied an
-    external provider voice id (e.g. ElevenLabs id).
+    Resolve the Scale Labs voice catalog entry into a Vapi voice config.
+
+    Precedence:
+      1. Recognized Scale Labs id (`v_emma`, `v_alena`, ...) → mapped ElevenLabs voice.
+      2. Caller supplied an explicit ElevenLabs id (or a long id-shaped string)
+         → pass it through to 11labs with the multilingual model.
+      3. Anything else (unknown / empty) → Rachel as a safe multilingual default.
     """
     voice_id = str(config.get("voiceId") or "").strip()
     explicit_provider = str(config.get("vapiVoiceProvider") or "").strip().lower()
 
-    if explicit_provider == "11labs" and voice_id and not voice_id.startswith("v_"):
-        return {"provider": "11labs", "voiceId": voice_id or _default_elevenlabs_voice_id()}
-    if voice_id and not voice_id.startswith("v_") and len(voice_id) > 12:
-        # Heuristic: long ids are often ElevenLabs / PlayHT style ids from integrations.
-        return {"provider": "11labs", "voiceId": voice_id}
+    if voice_id in SCALE_VOICE_MAP:
+        return _elevenlabs_voice_block(SCALE_VOICE_MAP[voice_id])
 
-    # Blank-template parity: Vapi stock voice (dashboard default for new assistants).
-    return {"provider": "vapi", "voiceId": "Elliot"}
+    if explicit_provider == "11labs" and voice_id and not voice_id.startswith("v_"):
+        return _elevenlabs_voice_block(voice_id or _default_elevenlabs_voice_id())
+
+    if voice_id and not voice_id.startswith("v_") and len(voice_id) > 12:
+        # Heuristic: long ids are likely ElevenLabs ids from integrations.
+        return _elevenlabs_voice_block(voice_id)
+
+    return _elevenlabs_voice_block(_default_elevenlabs_voice_id())
 
 
 def build_vapi_assistant_payload(name: str, config: dict[str, Any]) -> dict[str, Any]:

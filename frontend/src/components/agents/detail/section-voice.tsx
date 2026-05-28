@@ -27,12 +27,15 @@ export function SectionVoice({ agent, onChange }: Props) {
     [agent.language],
   );
 
-  const provider =
-    agent.language === "en" ? "11Labs" : "Yandex SpeechKit";
+  // All voices use ElevenLabs Multilingual v2 (EN + RU + UZ from the same
+  // pool). The language tab in the studio is a UX grouping, not a different
+  // TTS provider. See backend `_voice_block` / `SCALE_VOICE_MAP`.
+  const provider = "ElevenLabs Multilingual v2";
 
   const handlePlay = (voice: Voice) => {
-    toast.info(`Sample for ${voice.name} would play here`, {
-      description: "Audio previews wire up after we connect the voice provider.",
+    toast.info(`Sample for ${voice.name} not yet wired`, {
+      description:
+        "In-page audio previews ship next — use 'Test agent' for a live call with this voice.",
     });
   };
 

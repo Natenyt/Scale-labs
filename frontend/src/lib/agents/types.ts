@@ -55,7 +55,7 @@ export type Voice = {
   gender: "male" | "female";
   age: "young" | "adult" | "mature";
   language: Language;
-  provider: "elevenlabs" | "yandex";
+  provider: "elevenlabs";
   accent?: string;
 };
 
@@ -79,18 +79,18 @@ export const VOICES: Voice[] = [
   { id: "v_marcus", name: "Marcus", gender: "male", age: "mature", language: "en", provider: "elevenlabs", accent: "American" },
   { id: "v_sophie", name: "Sophie", gender: "female", age: "young", language: "en", provider: "elevenlabs", accent: "British" },
   { id: "v_james", name: "James", gender: "male", age: "adult", language: "en", provider: "elevenlabs", accent: "Australian" },
-  { id: "v_alena", name: "Alena", gender: "female", age: "adult", language: "ru", provider: "yandex" },
-  { id: "v_filipp", name: "Filipp", gender: "male", age: "adult", language: "ru", provider: "yandex" },
-  { id: "v_jane", name: "Jane", gender: "female", age: "young", language: "ru", provider: "yandex" },
-  { id: "v_omazh", name: "Omazh", gender: "female", age: "mature", language: "ru", provider: "yandex" },
-  { id: "v_zahar", name: "Zahar", gender: "male", age: "mature", language: "ru", provider: "yandex" },
-  { id: "v_ermil", name: "Ermil", gender: "male", age: "young", language: "ru", provider: "yandex" },
-  { id: "v_nigora", name: "Nigora", gender: "female", age: "adult", language: "uz", provider: "yandex" },
-  { id: "v_bekhzod", name: "Bekhzod", gender: "male", age: "adult", language: "uz", provider: "yandex" },
-  { id: "v_madina", name: "Madina", gender: "female", age: "young", language: "uz", provider: "yandex" },
-  { id: "v_azamat", name: "Azamat", gender: "male", age: "mature", language: "uz", provider: "yandex" },
-  { id: "v_dilnoza", name: "Dilnoza", gender: "female", age: "mature", language: "uz", provider: "yandex" },
-  { id: "v_jasur", name: "Jasur", gender: "male", age: "young", language: "uz", provider: "yandex" },
+  { id: "v_alena", name: "Alena", gender: "female", age: "adult", language: "ru", provider: "elevenlabs" },
+  { id: "v_filipp", name: "Filipp", gender: "male", age: "adult", language: "ru", provider: "elevenlabs" },
+  { id: "v_jane", name: "Jane", gender: "female", age: "young", language: "ru", provider: "elevenlabs" },
+  { id: "v_omazh", name: "Omazh", gender: "female", age: "mature", language: "ru", provider: "elevenlabs" },
+  { id: "v_zahar", name: "Zahar", gender: "male", age: "mature", language: "ru", provider: "elevenlabs" },
+  { id: "v_ermil", name: "Ermil", gender: "male", age: "young", language: "ru", provider: "elevenlabs" },
+  { id: "v_nigora", name: "Nigora", gender: "female", age: "adult", language: "uz", provider: "elevenlabs" },
+  { id: "v_bekhzod", name: "Bekhzod", gender: "male", age: "adult", language: "uz", provider: "elevenlabs" },
+  { id: "v_madina", name: "Madina", gender: "female", age: "young", language: "uz", provider: "elevenlabs" },
+  { id: "v_azamat", name: "Azamat", gender: "male", age: "mature", language: "uz", provider: "elevenlabs" },
+  { id: "v_dilnoza", name: "Dilnoza", gender: "female", age: "mature", language: "uz", provider: "elevenlabs" },
+  { id: "v_jasur", name: "Jasur", gender: "male", age: "young", language: "uz", provider: "elevenlabs" },
 ];
 
 export const TOOLS: Tool[] = [
