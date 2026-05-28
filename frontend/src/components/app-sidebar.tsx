@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LineChart,
   Phone,
+  PhoneOutgoing,
   PlugZap,
   ScrollText,
   Users,
@@ -40,6 +41,7 @@ const navGroups: NavGroup[] = [
       { title: "Squads", url: "/squads", icon: Users },
       { title: "Tools", url: "/tools", icon: Wrench },
       { title: "Workflow", url: "/workflow", icon: Workflow },
+      { title: "Call", url: "/calls", icon: PhoneOutgoing },
     ],
   },
   {

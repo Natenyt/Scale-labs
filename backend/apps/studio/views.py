@@ -897,6 +897,30 @@ class OutboundCallView(APIView):
             )
         if ser.validated_data.get("phone_number_id"):
             payload["phoneNumberId"] = ser.validated_data["phone_number_id"]
+        else:
+            try:
+                phone_rows = vapi_service.list_phone_numbers()
+            except vapi_service.VapiApiError as e:
+                return Response(e.body, status=e.status)
+            except RuntimeError as e:
+                return Response({"error": str(e)}, status=500)
+            ids = org_vapi_resource_ids(org)
+            accessible = [r for r in phone_rows if phone_number_belongs_to_org(r, ids)]
+            picked = next(
+                (r for r in accessible if str(r.get("id") or "").strip()),
+                None,
+            )
+            if picked is None:
+                return Response(
+                    {
+                        "detail": (
+                            "No phone number is available on the connected voice "
+                            "account. Add a number on the Phone Numbers page first."
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            payload["phoneNumberId"] = str(picked["id"]).strip()
         try:
             res = vapi_service.create_phone_call(payload)
         except vapi_service.VapiApiError as e:

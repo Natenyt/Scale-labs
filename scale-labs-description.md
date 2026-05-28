@@ -234,18 +234,6 @@ Scale Labs is in **prototype** stage: core paths work end-to-end, but not every 
 - English voice demonstrations end-to-end; Uzbek localization in progress (speech and phrasing).
 - Multi-organization workspace with authentication.
 
-**Not yet available (honest gaps):**
-
-- Billing and subscription enforcement in the product UI.
-- HubSpot, Bitrix24, and other CRM connectors beyond Notion.
-- Squads (multi-agent orchestration) and dedicated live monitoring consoles.
-- First-class email and SMS modules as peers to voice (some capabilities exist only as design targets).
-- Fully automatic “preload customer context on ring” for standalone agents without workflow tool steps.
-- Generic “connect any API in two clicks” marketplace—pattern exists via API request nodes and custom tools, but not a full connector catalog.
-
-We describe these gaps openly so evaluations—academic or commercial—match what the software actually does.
-
----
 
 ## Roadmap (next 6–12 months)
 

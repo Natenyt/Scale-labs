@@ -1,0 +1,10 @@
+erDiagram
+    User ||--o{ OrganizationMembership : "is member"
+    Organization ||--o{ OrganizationMembership : "has members"
+    User ||--o| Organization : "last_active"
+    Organization ||--o{ Agent : "owns"
+    Organization ||--o{ Workflow : "owns"
+    Organization ||--o{ NotionIntegration : "owns"
+    Organization ||--o{ Call : "owns"
+    User ||--o{ Call : "created"
+    Call ||--o{ CallEvent : "has events"

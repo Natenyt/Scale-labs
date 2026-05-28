@@ -121,6 +121,12 @@ export function WorkflowTestPanel({
   }, [onActiveNodeChange, onCallEnd]);
 
   const start = React.useCallback(async () => {
+    if (!window.isSecureContext) {
+      setStatus(
+        "Browser call requires HTTPS (or localhost) to access microphone. Open this app via your ngrok URL or localhost.",
+      );
+      return;
+    }
     if (!workflowRecordId.trim()) {
       setStatus("Save this workflow on the server before testing.");
       return;

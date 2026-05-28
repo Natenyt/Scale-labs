@@ -1,0 +1,13 @@
+flowchart LR
+    Customer((Customer)) <--> Telephony[Telephony adapter]
+    Telephony --> ASR[Streaming ASR]
+    ASR --> Orchestrator{Dialogue orchestrator}
+    Orchestrator --> LLM[LLM dialogue manager]
+    LLM --> Orchestrator
+    Orchestrator --> ToolCall[Tool webhook client]
+    ToolCall --> Backend[(Scale Labs backend)]
+    Backend --> ToolCall
+    Orchestrator --> TTS[Neural TTS]
+    TTS --> Telephony
+    Orchestrator --> VAD[VAD / barge-in detector]
+    VAD --> Orchestrator

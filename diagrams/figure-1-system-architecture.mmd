@@ -1,0 +1,28 @@
+flowchart TB
+    subgraph Browser
+      Studio[Next.js Studio - App Router]
+      WebSDK[Voice runtime browser SDK]
+    end
+    subgraph Backend["Scale Labs Backend"]
+      Django[Django REST Framework]
+      MW[ActiveOrganizationMiddleware]
+      Services[Service modules - workflow compiler, integration handlers, runtime client]
+      DB[(MySQL / SQLite)]
+    end
+    subgraph Runtime["Scale Labs Voice Runtime"]
+      ASR[Streaming ASR]
+      LLM[LLM dialogue manager]
+      TTS[Neural TTS]
+      Tel[Telephony adapter]
+      Orch[Orchestrator]
+    end
+    Notion[(Notion)]
+    Customer((Customer phone))
+
+    Studio -->|HTTPS JSON| Django
+    WebSDK -->|WebRTC test call| Runtime
+    Django --> MW --> Services --> DB
+    Services -->|REST control| Runtime
+    Runtime -->|Tool webhooks| Django
+    Services -->|Notion API| Notion
+    Tel <--> Customer

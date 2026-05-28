@@ -200,6 +200,9 @@ export function useVoiceSession(
   }, []);
 
   const startCall = React.useCallback(async (): Promise<string | null> => {
+    if (!window.isSecureContext) {
+      return "Browser call requires HTTPS (or localhost) to access microphone.";
+    }
     if (!isServerAgentId(id)) {
       return "This agent must be saved on the server before starting a call.";
     }

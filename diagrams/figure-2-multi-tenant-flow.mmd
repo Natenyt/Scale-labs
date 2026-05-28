@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant Browser as Browser (Studio)
+    participant Next as Next.js (proxy)
+    participant Django as Django REST Framework
+    participant JWT as SimpleJWT
+    participant MW as ActiveOrganizationMiddleware
+    participant View as ViewSet (e.g. AgentViewSet)
+    participant DB as Database
+
+    Browser->>Next: GET /api/v1/agents/ (Authorization, X-Org-Id)
+    Next->>Django: GET /api/v1/agents/ (forwarded with both headers)
+    Django->>JWT: verify access token
+    JWT-->>Django: request.user
+    Django->>MW: process_request
+    MW->>DB: verify membership (user, org)
+    DB-->>MW: membership row
+    MW-->>Django: request.organization
+    Django->>View: dispatch
+    View->>DB: Agent.objects.filter(organization=request.organization)
+    DB-->>View: org-scoped agents
+    View-->>Django: serialized response
+    Django-->>Next: JSON
+    Next-->>Browser: JSON

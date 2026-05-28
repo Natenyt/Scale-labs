@@ -1,0 +1,15 @@
+flowchart LR
+    A[Local Workflow JSON in studio] -->|runtime-compile.ts| B[Compiled payload]
+    B -->|POST /workflow| C[Voice runtime]
+    A -.-> N1((start))
+    A -.-> N2((conversation))
+    A -.-> N3((tool))
+    A -.-> N4((transfer_call))
+    A -.-> N5((end_call))
+    A -.-> N6((api_request))
+    style N1 fill:#1e3a8a,color:#fff
+    style N2 fill:#0f766e,color:#fff
+    style N3 fill:#a16207,color:#fff
+    style N4 fill:#7c2d12,color:#fff
+    style N5 fill:#374151,color:#fff
+    style N6 fill:#581c87,color:#fff

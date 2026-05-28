@@ -20,7 +20,9 @@ if (!fs.existsSync(python)) {
   process.exit(1);
 }
 
-const child = spawn(python, ["manage.py", "runserver"], {
+const bindHost = process.env.BACKEND_HOST || "0.0.0.0";
+const bindPort = process.env.BACKEND_PORT || "8000";
+const child = spawn(python, ["manage.py", "runserver", `${bindHost}:${bindPort}`], {
   cwd: backendDir,
   stdio: "inherit",
   env: process.env,

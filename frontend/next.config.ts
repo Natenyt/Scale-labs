@@ -5,6 +5,8 @@ function devAllowedOrigins(): string[] {
   const hosts = new Set<string>([
     "localhost:3000",
     "127.0.0.1:3000",
+    // Local Wi-Fi device origin used for LAN testing.
+    "192.168.88.22",
     // Scale Labs public dev tunnel (update via NEXT_PUBLIC_DEV_ORIGIN when ngrok URL changes)
     "blowzily-glossological-geraldine.ngrok-free.dev",
   ]);
@@ -16,6 +18,20 @@ function devAllowedOrigins(): string[] {
     } catch {
       const host = raw.replace(/^https?:\/\//, "").split("/")[0];
       if (host) hosts.add(host);
+    }
+  }
+  const extraOrigins = process.env.NEXT_PUBLIC_ALLOWED_DEV_ORIGINS?.trim();
+  if (extraOrigins) {
+    for (const origin of extraOrigins.split(",")) {
+      const value = origin.trim();
+      if (!value) continue;
+      try {
+        const u = value.includes("://") ? new URL(value) : new URL(`http://${value}`);
+        hosts.add(u.host);
+      } catch {
+        const host = value.replace(/^https?:\/\//, "").split("/")[0];
+        if (host) hosts.add(host);
+      }
     }
   }
   return [...hosts];

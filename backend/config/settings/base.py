@@ -36,6 +36,11 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env("DJANGO_DEBUG")
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+if DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["*"]
+elif DEBUG and "*" not in ALLOWED_HOSTS:
+    # Allow LAN host headers in development without editing .env on every IP change.
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, "*"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -138,6 +143,16 @@ if isinstance(_raw_cors, str):
     CORS_ALLOWED_ORIGINS = [o.strip() for o in _raw_cors.split(",") if o.strip()]
 else:
     CORS_ALLOWED_ORIGINS = list(_raw_cors) if _raw_cors else []
+
+# In local dev, allow frontend served from RFC1918 LAN IPs on port 3000.
+# This keeps login/API calls working when you open the app from another device.
+CORS_ALLOWED_ORIGIN_REGEXES = []
+if DEBUG:
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        r"^http://192\.168\.\d{1,3}\.\d{1,3}:3000$",
+        r"^http://10\.\d{1,3}\.\d{1,3}\.\d{1,3}:3000$",
+        r"^http://172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}:3000$",
+    ]
 
 # Org tenancy header from the Next.js client (not in corsheaders defaults).
 CORS_ALLOW_HEADERS = (*default_headers, "x-org-id")

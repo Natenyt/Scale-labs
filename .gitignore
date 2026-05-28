@@ -32,5 +32,9 @@ frontend/out/
 Thumbs.db
 *.log
 
+# Thesis exports (regenerable from Scale-Labs-Thesis.md via Pandoc)
+Scale-Labs-Thesis.html
+Scale-Labs-Thesis1.html
+
 # Cursor local workspace state (keep rules/skills elsewhere if needed)
 .cursor/projects/
