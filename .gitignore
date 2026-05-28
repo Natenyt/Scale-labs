@@ -38,3 +38,4 @@ Scale-Labs-Thesis1.html
 
 # Cursor local workspace state (keep rules/skills elsewhere if needed)
 .cursor/projects/
+.vercel

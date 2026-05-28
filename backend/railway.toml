@@ -1,0 +1,14 @@
+[build]
+builder = "NIXPACKS"
+# Collect static into the image so whitenoise serves them at runtime.
+# Doesn't need DB access — safe to run at build time.
+buildCommand = "python manage.py collectstatic --no-input"
+
+[deploy]
+# Migrations run before each new deployment is promoted. Has DB access via internal DNS.
+preDeployCommand = "python manage.py migrate --no-input"
+startCommand = "gunicorn config.wsgi --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 60 --access-logfile - --error-logfile -"
+healthcheckPath = "/health/"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
