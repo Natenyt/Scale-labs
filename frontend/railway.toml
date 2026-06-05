@@ -1,0 +1,23 @@
+# Railway config for the Scale Labs Next.js frontend service.
+# Service root directory is `frontend/`, so Railway reads this file from there.
+#
+# Architecture: the browser talks ONLY to this frontend origin. Every
+# `apiFetch` call is same-origin (NEXT_PUBLIC_API_BASE_URL = this service's own
+# public domain) and lands on the Node route handler at app/api/v1/[...path],
+# which server-side-proxies to DJANGO_DEV_URL (the backend service). No browser
+# CORS, no cross-origin token issues.
+
+[build]
+builder = "NIXPACKS"
+# Nixpacks installs deps (npm ci) automatically, then runs this build.
+buildCommand = "npm run build"
+
+[deploy]
+# Next 16: bind to Railway's injected $PORT on all interfaces, or the load
+# balancer cannot reach the container and health checks restart-loop.
+startCommand = "npx next start -p $PORT -H 0.0.0.0"
+# /login is a public, unguarded page that returns 200 HTML.
+healthcheckPath = "/login"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

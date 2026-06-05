@@ -96,7 +96,13 @@ export default function DashboardPage() {
     isDemoSession() ||
     !hasBackendApi() ||
     allFailed ||
-    (!metricsLoading && !logsLoading);
+    (!metricsLoading && !logsLoading) ||
+    // Resilience: if any single query errors (rather than all three), still
+    // render the shell so the per-section error cards show, instead of leaving
+    // the whole page blank waiting on a query that will never settle.
+    metricsQuery.isError ||
+    logsQuery.isError ||
+    phonesQuery.isError;
 
   useCompleteNavigationWhenReady(pageReady);
 
