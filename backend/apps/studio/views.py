@@ -388,10 +388,11 @@ class CallLogsListView(APIView):
 
     def get(self, request: Request):
         org = request.organization
+        _max_days = settings.VAPI_MAX_HISTORY_DAYS
         try:
-            days = max(1, min(90, int(request.query_params.get("days", 7))))
+            days = max(1, min(_max_days, int(request.query_params.get("days", 7))))
         except (TypeError, ValueError):
-            days = 7
+            days = min(7, _max_days)
         try:
             limit = max(1, min(100, int(request.query_params.get("limit", 50))))
         except (TypeError, ValueError):
@@ -487,10 +488,11 @@ class MetricsDashboardView(APIView):
 
     def get(self, request: Request):
         org = request.organization
+        _max_days = settings.VAPI_MAX_HISTORY_DAYS
         try:
-            days = max(1, min(90, int(request.query_params.get("days", 30))))
+            days = max(1, min(_max_days, int(request.query_params.get("days", _max_days))))
         except (TypeError, ValueError):
-            days = 30
+            days = _max_days
         step = (request.query_params.get("step") or "day").strip().lower()
         if step not in ("day", "week"):
             step = "day"

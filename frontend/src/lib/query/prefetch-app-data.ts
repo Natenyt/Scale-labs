@@ -7,7 +7,10 @@ import { fetchMetrics } from "@/lib/metrics/metrics-api";
 import { fetchPhoneNumbers } from "@/lib/phone-numbers/phone-numbers-api";
 import { queryKeys } from "@/lib/query/query-keys";
 
-export const DASHBOARD_METRICS_DAYS = 30;
+// Capped at 14: the Vapi plan only exposes the last 14 days of call history,
+// so a wider window makes the metrics/logs endpoints 400 and blanks the
+// dashboard. Backend also clamps (settings.VAPI_MAX_HISTORY_DAYS) as a backstop.
+export const DASHBOARD_METRICS_DAYS = 14;
 export const DASHBOARD_LOGS_DAYS = 14;
 export const DASHBOARD_LOGS_LIMIT = 8;
 export const DEFAULT_LOGS_DAYS = 7;

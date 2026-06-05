@@ -122,6 +122,13 @@ CACHES = {
 
 METRICS_CACHE_TTL_SECONDS = 60
 
+# Vapi call-history window cap. The Vapi subscription only exposes the last N
+# days of call history; querying a wider range makes Vapi return a 400 and the
+# dashboard/metrics/logs blank out. Clamp every history request to this many
+# days so a wider client request degrades to the max available instead of
+# erroring. Raise this (via env) if the Vapi plan is upgraded.
+VAPI_MAX_HISTORY_DAYS = env.int("VAPI_MAX_HISTORY_DAYS", default=14)
+
 AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
