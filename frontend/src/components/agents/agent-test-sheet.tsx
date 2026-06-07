@@ -156,6 +156,9 @@ export function AgentTestSheet({
         text: `[user] ${t}`,
         streamRole: "user",
         isStreaming: false,
+        // committed so a following ASR final consolidates into this turn
+        // instead of replacing the typed text.
+        committed: t,
       },
     ]);
     setVoiceDraft("");

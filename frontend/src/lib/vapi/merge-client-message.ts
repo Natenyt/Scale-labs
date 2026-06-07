@@ -1,8 +1,16 @@
 /**
- * Vapi client transcript messages (`ClientMessageTranscript`) send many
- * `transcriptType: "partial"` updates per utterance, then one `"final"`.
- * Appending each event as a new row duplicates text — stream into one row
- * until `final`, then dedupe identical consecutive finals.
+ * Build a clean chat transcript from Vapi client messages.
+ *
+ * Vapi emits, per spoken utterance, many `transcript` partials (interim ASR)
+ * followed by one `final`. A single *turn* (one speaker talking continuously)
+ * usually spans several utterances/finals. We consolidate all consecutive
+ * same-speaker utterances into ONE turn line — live partials update that line
+ * in place, finals accumulate into it, and a speaker change starts a new line.
+ *
+ * `model-output` (the assistant's raw LLM token stream) is intentionally
+ * ignored: for voice calls the assistant's words already arrive as
+ * `transcript` (role:"assistant") events, so consuming model-output too would
+ * both duplicate the assistant's reply and re-fragment it token-by-token.
  */
 
 export type TranscriptChatLine = {
@@ -10,11 +18,31 @@ export type TranscriptChatLine = {
   role: "system" | "transcript";
   text: string;
   streamRole?: "assistant" | "user";
+  /** True while a partial (interim) utterance is live in this turn. */
   isStreaming?: boolean;
+  /** Accumulated finalized text for this turn (internal bookkeeping). */
+  committed?: string;
 };
 
 export function newTranscriptLineId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+const TRANSCRIPT_TYPES = new Set([
+  "transcript",
+  "transcript[transcriptType='final']",
+  "transcript-update",
+]);
+
+function format(role: "assistant" | "user", text: string): string {
+  return `[${role}] ${text}`;
+}
+
+function replaceLast(
+  lines: TranscriptChatLine[],
+  next: TranscriptChatLine,
+): TranscriptChatLine[] {
+  return lines.map((line, i) => (i === lines.length - 1 ? next : line));
 }
 
 export function mergeVapiClientMessage(
@@ -25,128 +53,60 @@ export function mergeVapiClientMessage(
   const o = raw as Record<string, unknown>;
   const t = typeof o.type === "string" ? o.type : "";
 
-  if (t === "model-output" && typeof o.output === "string") {
-    const m = o.output.trim();
-    if (!m) return lines;
-    const display = `[assistant] ${m}`;
-    const last = lines[lines.length - 1];
-    if (last?.role === "transcript" && last.text === display) return lines;
-    return dedupeAdjacentIdenticalTranscripts([
-      ...lines,
-      {
-        id: newTranscriptLineId(),
-        role: "transcript",
-        text: display,
-        streamRole: "assistant",
-        isStreaming: false,
-      },
-    ]);
-  }
-
-  if (
-    t !== "transcript" &&
-    t !== "transcript[transcriptType='final']" &&
-    t !== "transcript-update"
-  ) {
-    return lines;
-  }
+  // Only transcript events feed the chat. (model-output is dropped — see header.)
+  if (!TRANSCRIPT_TYPES.has(t)) return lines;
 
   const streamRole: "assistant" | "user" = o.role === "user" ? "user" : "assistant";
-  const body =
+  const body = (
     typeof o.transcript === "string"
       ? o.transcript
       : typeof o.transcriptPartial === "string"
         ? o.transcriptPartial
         : typeof o.text === "string"
           ? o.text
-          : "";
-  const trimmed = body.trim();
-  if (!trimmed) return lines;
+          : ""
+  ).trim();
+  if (!body) return lines;
 
-  const transcriptType: "partial" | "final" =
-    o.transcriptType === "final" || t === "transcript[transcriptType='final']"
-      ? "final"
-      : o.transcriptType === "partial"
-        ? "partial"
-        : "partial";
+  const isFinal =
+    o.transcriptType === "final" || t === "transcript[transcriptType='final']";
 
-  const display = `[${streamRole}] ${trimmed}`;
-
-  let streamingIdx = -1;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (
-      line.role === "transcript" &&
-      line.streamRole === streamRole &&
-      line.isStreaming === true
-    ) {
-      streamingIdx = i;
-      break;
-    }
-  }
-
-  if (transcriptType === "partial") {
-    if (streamingIdx >= 0) {
-      return lines.map((line, i) =>
-        i === streamingIdx ? { ...line, text: display } : line,
-      );
-    }
-    return [
-      ...lines,
-      {
-        id: newTranscriptLineId(),
-        role: "transcript",
-        text: display,
-        streamRole,
-        isStreaming: true,
-      },
-    ];
-  }
-
-  if (streamingIdx >= 0) {
-    const next = lines.map((line, i) =>
-      i === streamingIdx
-        ? { ...line, text: display, isStreaming: false }
-        : line,
-    );
-    return dedupeAdjacentIdenticalTranscripts(next);
-  }
-
+  // The current turn is the last line iff it's a transcript from this speaker.
+  // A system line or the other speaker between us closes the turn.
   const last = lines[lines.length - 1];
-  if (
-    last?.role === "transcript" &&
-    last.text === display &&
-    last.isStreaming !== true
-  ) {
-    return lines;
-  }
+  const activeTurn =
+    last && last.role === "transcript" && last.streamRole === streamRole
+      ? last
+      : null;
 
-  return dedupeAdjacentIdenticalTranscripts([
-    ...lines,
-    {
-      id: newTranscriptLineId(),
+  if (!isFinal) {
+    // Partial: show committed text + the live interim tail, in place.
+    const committed = activeTurn?.committed ?? "";
+    const text = committed ? `${committed} ${body}` : body;
+    const lineForm: TranscriptChatLine = {
+      id: activeTurn?.id ?? newTranscriptLineId(),
       role: "transcript",
-      text: display,
       streamRole,
-      isStreaming: false,
-    },
-  ]);
-}
-
-function dedupeAdjacentIdenticalTranscripts(
-  lines: TranscriptChatLine[],
-): TranscriptChatLine[] {
-  if (lines.length < 2) return lines;
-  const a = lines[lines.length - 2];
-  const b = lines[lines.length - 1];
-  if (
-    a?.role === "transcript" &&
-    b?.role === "transcript" &&
-    a.text === b.text &&
-    !a.isStreaming &&
-    !b.isStreaming
-  ) {
-    return lines.slice(0, -1);
+      isStreaming: true,
+      committed,
+      text: format(streamRole, text),
+    };
+    return activeTurn ? replaceLast(lines, lineForm) : [...lines, lineForm];
   }
-  return lines;
+
+  // Final: commit this utterance into the active turn (or open a new turn).
+  const committed = activeTurn?.committed ?? "";
+  const merged =
+    committed && !committed.endsWith(body)
+      ? `${committed} ${body}`
+      : committed || body;
+  const lineForm: TranscriptChatLine = {
+    id: activeTurn?.id ?? newTranscriptLineId(),
+    role: "transcript",
+    streamRole,
+    isStreaming: false,
+    committed: merged,
+    text: format(streamRole, merged),
+  };
+  return activeTurn ? replaceLast(lines, lineForm) : [...lines, lineForm];
 }
