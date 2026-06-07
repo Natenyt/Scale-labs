@@ -82,6 +82,35 @@ from apps.studio.services.vapi_webhook_auth import verify_vapi_webhook_secret
 logger = logging.getLogger("apps.studio.webhooks")
 
 
+def _upsert_vapi_assistant(agent: Agent, payload: dict) -> tuple[str, Any]:
+    """Create or update the agent's Vapi assistant, self-healing a stale id.
+
+    Returns (assistant_id, vapi_response). If the stored ``vapi_assistant_id``
+    no longer exists on Vapi (404 — e.g. after a Vapi API-key/account rotation
+    or a manual delete on the Vapi dashboard), a fresh assistant is created and
+    persisted instead of failing. Without this, a PATCH to the dead id 404s
+    forever and the agent can never be called again.
+    """
+    vid = (agent.vapi_assistant_id or "").strip()
+    if vid:
+        try:
+            res = vapi_service.update_assistant(vid, payload)
+            return vid, res
+        except vapi_service.VapiApiError as e:
+            if e.status != 404:
+                raise
+            # Stale assistant id — fall through and recreate.
+    res = vapi_service.create_assistant(payload)
+    new_id = vapi_service.assistant_id_from_response(res)
+    if not new_id:
+        raise vapi_service.VapiApiError(
+            502, {"error": "Vapi did not return an assistant id.", "vapi": res}
+        )
+    agent.vapi_assistant_id = new_id
+    agent.save(update_fields=["vapi_assistant_id", "updated_at"])
+    return new_id, res
+
+
 class AgentViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
     serializer_class = AgentSerializer
     permission_classes = [IsAuthenticated, HasActiveOrganization]
@@ -126,21 +155,9 @@ class AgentViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
             agent.name,
             agent.config if isinstance(agent.config, dict) else {},
         )
-        vid = (agent.vapi_assistant_id or "").strip()
         try:
-            if vid:
-                res = vapi_service.update_assistant(vid, payload)
-                return Response({"ok": True, "vapiAssistantId": vid, "vapi": res})
-            res = vapi_service.create_assistant(payload)
-            new_id = vapi_service.assistant_id_from_response(res)
-            if not new_id:
-                return Response(
-                    {"error": "Vapi did not return an assistant id.", "vapi": res},
-                    status=status.HTTP_502_BAD_GATEWAY,
-                )
-            agent.vapi_assistant_id = new_id
-            agent.save(update_fields=["vapi_assistant_id", "updated_at"])
-            return Response({"ok": True, "vapiAssistantId": new_id, "vapi": res})
+            vid, res = _upsert_vapi_assistant(agent, payload)
+            return Response({"ok": True, "vapiAssistantId": vid, "vapi": res})
         except vapi_service.VapiApiError as e:
             return Response(
                 {"error": "Vapi API error", "detail": e.body},
@@ -155,16 +172,8 @@ class AgentViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
             agent.name,
             agent.config if isinstance(agent.config, dict) else {},
         )
-        vid = (agent.vapi_assistant_id or "").strip()
         try:
-            if vid:
-                vapi_service.update_assistant(vid, payload)
-            else:
-                res = vapi_service.create_assistant(payload)
-                new_id = vapi_service.assistant_id_from_response(res)
-                if new_id:
-                    agent.vapi_assistant_id = new_id
-                    agent.save(update_fields=["vapi_assistant_id", "updated_at"])
+            _upsert_vapi_assistant(agent, payload)
         except vapi_service.VapiApiError as e:
             raise ValidationError({"vapi": e.body}) from e
 
