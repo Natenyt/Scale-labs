@@ -117,7 +117,11 @@ export default function WorkflowDetailPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] min-h-[640px] flex-1 flex-col gap-3 pt-2">
+    <div className="flex h-[calc(100vh-7rem)] min-h-[640px] flex-col gap-3 pt-2 overflow-hidden">
+      {/* Fixed-height viewport pane: gives the canvas + test-panel a bounded
+          height so the transcript scrolls internally (overflow-y-auto) instead
+          of growing the page. NOTE: do NOT add `flex-1` here — flex-basis:0%
+          overrides the explicit calc height and re-breaks the scroll. */}
       <Toolbar
         workflow={workflow}
         errors={errors}
