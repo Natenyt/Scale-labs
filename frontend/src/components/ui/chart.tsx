@@ -59,9 +59,30 @@ function ChartContainer({
   const uniqueId = React.useId()
   const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`
 
+  // Only mount the recharts ResponsiveContainer once the wrapper has a real
+  // measured size. Without this, a chart that mounts inside a hidden/animating
+  // panel (e.g. an agent detail rail or a Sheet) or before first layout renders
+  // at 0x0 and recharts floods the console with "width(0) and height(0)".
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [hasSize, setHasSize] = React.useState(false)
+
+  React.useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const measure = () => {
+      const { width, height } = el.getBoundingClientRect()
+      setHasSize(width > 0 && height > 0)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   return (
     <ChartContext.Provider value={{ config }}>
       <div
+        ref={containerRef}
         data-slot="chart"
         data-chart={chartId}
         className={cn(
@@ -71,11 +92,13 @@ function ChartContainer({
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer
-          initialDimension={initialDimension}
-        >
-          {children}
-        </RechartsPrimitive.ResponsiveContainer>
+        {hasSize ? (
+          <RechartsPrimitive.ResponsiveContainer
+            initialDimension={initialDimension}
+          >
+            {children}
+          </RechartsPrimitive.ResponsiveContainer>
+        ) : null}
       </div>
     </ChartContext.Provider>
   )
