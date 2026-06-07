@@ -1,18 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { CheckIcon, PauseIcon, PlayIcon } from "lucide-react";
-import { toast } from "sonner";
+import { CheckIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
-import {
-  getVoicesForLanguage,
-  type Agent,
-  type Voice,
-} from "@/lib/agents/types";
+import { getVoicesForLanguage, type Agent } from "@/lib/agents/types";
 
 import { SectionShell } from "./section-shell";
 
@@ -27,115 +21,52 @@ export function SectionVoice({ agent, onChange }: Props) {
     [agent.language],
   );
 
-  const audioRef = React.useRef<HTMLAudioElement | null>(null);
-  const [playingId, setPlayingId] = React.useState<string | null>(null);
-
-  const stop = React.useCallback(() => {
-    const a = audioRef.current;
-    if (a) {
-      a.pause();
-      a.currentTime = 0;
-    }
-    setPlayingId(null);
-  }, []);
-
-  React.useEffect(() => stop, [stop]);
-
-  const handlePlay = React.useCallback(
-    (voice: Voice) => {
-      // Toggle off if this sample is already playing.
-      if (playingId === voice.id) {
-        stop();
-        return;
-      }
-      stop();
-      if (!voice.previewUrl) {
-        toast.info(`No sample available for ${voice.name} yet.`);
-        return;
-      }
-      const a = new Audio(voice.previewUrl);
-      audioRef.current = a;
-      a.onended = () => setPlayingId(null);
-      a.onerror = () => {
-        setPlayingId(null);
-        toast.error(`Could not play the ${voice.name} sample.`);
-      };
-      void a.play().then(() => setPlayingId(voice.id)).catch(() => {
-        setPlayingId(null);
-        toast.error(`Could not play the ${voice.name} sample.`);
-      });
-    },
-    [playingId, stop],
-  );
-
   return (
     <SectionShell
       id="voice"
       title="Voice"
-      description="Pick how the agent sounds and how fast it speaks."
+      description="Pick how the agent sounds and how fast it speaks. Hear each voice on a test call."
     >
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {voices.map((voice) => {
           const selected = voice.id === agent.voiceId;
-          const isPlaying = playingId === voice.id;
           return (
-            <div
+            <button
               key={voice.id}
+              type="button"
+              onClick={() => onChange({ voiceId: voice.id })}
               className={cn(
-                "border-input bg-card text-card-foreground group/voice relative flex flex-col gap-3 rounded-xl border p-3 text-left transition",
+                "border-input bg-card text-card-foreground flex items-center justify-between gap-2 rounded-xl border p-3 text-left transition",
+                "hover:bg-accent/40 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
                 selected
                   ? "border-foreground/40 ring-foreground/20 bg-accent/40 ring-2"
                   : "ring-1 ring-transparent",
               )}
             >
-              <button
-                type="button"
-                onClick={() => onChange({ voiceId: voice.id })}
-                className={cn(
-                  "flex w-full cursor-pointer items-center justify-between rounded-lg text-left transition",
-                  "hover:bg-accent/40 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <div
-                    className={cn(
-                      "flex size-8 items-center justify-center rounded-lg text-sm font-medium",
-                      voice.gender === "female"
-                        ? "bg-pink-500/10 text-pink-300"
-                        : "bg-sky-500/10 text-sky-300",
-                    )}
-                  >
-                    {voice.name[0]}
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">{voice.name}</div>
-                    <div className="text-muted-foreground text-[11px] capitalize">
-                      {voice.gender} · {voice.age}
-                      {voice.accent ? ` · ${voice.accent}` : ""}
-                    </div>
+              <div className="flex min-w-0 items-center gap-2">
+                <div
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-medium",
+                    voice.gender === "female"
+                      ? "bg-pink-500/10 text-pink-300"
+                      : "bg-sky-500/10 text-sky-300",
+                  )}
+                >
+                  {voice.name[0]}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">{voice.name}</div>
+                  <div className="text-muted-foreground truncate text-[11px]">
+                    {voice.description}
                   </div>
                 </div>
-                {selected && (
-                  <div className="bg-foreground text-background flex size-5 items-center justify-center rounded-full">
-                    <CheckIcon className="size-3" />
-                  </div>
-                )}
-              </button>
-              <Button
-                type="button"
-                variant={isPlaying ? "secondary" : "outline"}
-                size="sm"
-                className="h-7 w-full justify-start gap-2 text-xs"
-                onClick={() => handlePlay(voice)}
-              >
-                {isPlaying ? (
-                  <PauseIcon className="size-3" />
-                ) : (
-                  <PlayIcon className="size-3" />
-                )}
-                {isPlaying ? "Stop" : "Play sample"}
-              </Button>
-            </div>
+              </div>
+              {selected && (
+                <div className="bg-foreground text-background flex size-5 shrink-0 items-center justify-center rounded-full">
+                  <CheckIcon className="size-3" />
+                </div>
+              )}
+            </button>
           );
         })}
       </div>

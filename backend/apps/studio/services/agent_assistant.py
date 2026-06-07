@@ -34,50 +34,14 @@ def _openai_model_id(scale_model: str) -> str:
     return "gpt-4.1"
 
 
-def _default_elevenlabs_voice_id() -> str:
-    """Rachel — widely available default when UI passes a real ElevenLabs voice id."""
-    return "21m00Tcm4TlvDq8ikWAM"
-
-
-# Map Scale Labs catalog ids (`v_*`) to real ElevenLabs voice ids.
-# All voices are ElevenLabs Multilingual v2, which covers EN + RU + UZ from the
-# same voiceId — the language tab is a UX grouping, not a different provider.
-# These ids are ElevenLabs premade voices whose public preview mp3s back the
-# "Play sample" buttons; keep this map in sync with frontend VOICES (types.ts).
-SCALE_VOICE_MAP: dict[str, str] = {
-    # English
-    "v_emma": "EXAVITQu4vr4xnSDxMaL",
-    "v_oliver": "CwhRBWXzGAHq8TQ4Fs17",
-    "v_aria": "FGY2WhTYpPnrIDTdsKH5",
-    "v_marcus": "IKne3meq5aSn9XLyUdCD",
-    "v_sophie": "Xb7hH8MSUJpSbSDYk0k2",
-    "v_james": "JBFqnCBsd6RMkjVDRZzb",
-    # Russian
-    "v_alena": "XrExE9yKIg1WjnnlVkGX",
-    "v_filipp": "N2lVS1w4EtoT3dr4eOWO",
-    "v_jane": "cgSgspJ2msm6clMCkdW9",
-    "v_omazh": "hpp4J3VqNfWAUOO0d1Us",
-    "v_zahar": "SOYHLrjzK2X1ezoPC6cr",
-    "v_ermil": "TX3LPaxmHKxFdv7VOQHJ",
-    # Uzbek
-    "v_nigora": "pFZP5JQG7iQjIQuC4Bku",
-    "v_bekhzod": "bIHbv24MWmeRgasZH58o",
-    "v_madina": "EXAVITQu4vr4xnSDxMaL",
-    "v_azamat": "cjVigY5qzO86Huf0OWal",
-    "v_dilnoza": "FGY2WhTYpPnrIDTdsKH5",
-    "v_jasur": "iP95p4xoKVk53GoZ742B",
-}
-
-
-def _elevenlabs_voice_block(voice_id: str, speed: float | None = None) -> dict[str, Any]:
-    block: dict[str, Any] = {
-        "provider": "11labs",
-        "voiceId": voice_id,
-        "model": "eleven_multilingual_v2",
-    }
-    if speed is not None:
-        block["speed"] = speed
-    return block
+# Vapi's NATIVE voices (provider "vapi"). These run inside Vapi's pipeline with
+# no external TTS hop, so they have the lowest latency — the whole point of
+# dropping ElevenLabs, whose eleven_multilingual_v2 made calls lag and stutter.
+# Keep this set in sync with frontend VOICES (types.ts).
+VAPI_VOICES: frozenset[str] = frozenset(
+    {"Elliot", "Clara", "Savannah", "Kai", "Rohan", "Emma"}
+)
+DEFAULT_VOICE = "Elliot"
 
 
 # Single low-latency model every agent runs on. The model picker was removed
@@ -91,7 +55,6 @@ def _voice_speed(config: dict[str, Any]) -> float:
         s = float(config.get("speed"))
     except (TypeError, ValueError):
         return 1.0
-    # ElevenLabs accepts roughly 0.7–1.2; clamp to stay inside Vapi's range.
     return max(0.7, min(1.2, round(s, 2)))
 
 
@@ -103,39 +66,21 @@ def _language_code(config: dict[str, Any]) -> str:
 
 
 def _transcriber_for_language(lang: str) -> dict[str, Any]:
-    """Deepgram defaults aligned with Vapi blank / common locales."""
+    """Low-latency Deepgram STT per language."""
     if lang == "ru":
         return {"provider": "deepgram", "model": "nova-2", "language": "ru"}
     if lang == "uz":
         return {"provider": "deepgram", "model": "nova-2", "language": "uz"}
-    return {"provider": "deepgram", "model": "flux-general-en", "language": "en"}
+    return {"provider": "deepgram", "model": "nova-3", "language": "en"}
 
 
 def _voice_block(config: dict[str, Any]) -> dict[str, Any]:
-    """
-    Resolve the Scale Labs voice catalog entry into a Vapi voice config.
-
-    Precedence:
-      1. Recognized Scale Labs id (`v_emma`, `v_alena`, ...) → mapped ElevenLabs voice.
-      2. Caller supplied an explicit ElevenLabs id (or a long id-shaped string)
-         → pass it through to 11labs with the multilingual model.
-      3. Anything else (unknown / empty) → Rachel as a safe multilingual default.
-    """
+    """Resolve the agent's voice to a Vapi native voice (lowest TTS latency)."""
     voice_id = str(config.get("voiceId") or "").strip()
-    explicit_provider = str(config.get("vapiVoiceProvider") or "").strip().lower()
-    speed = _voice_speed(config)
-
-    if voice_id in SCALE_VOICE_MAP:
-        return _elevenlabs_voice_block(SCALE_VOICE_MAP[voice_id], speed)
-
-    if explicit_provider == "11labs" and voice_id and not voice_id.startswith("v_"):
-        return _elevenlabs_voice_block(voice_id or _default_elevenlabs_voice_id(), speed)
-
-    if voice_id and not voice_id.startswith("v_") and len(voice_id) > 12:
-        # Heuristic: long ids are likely ElevenLabs ids from integrations.
-        return _elevenlabs_voice_block(voice_id, speed)
-
-    return _elevenlabs_voice_block(_default_elevenlabs_voice_id(), speed)
+    if voice_id not in VAPI_VOICES:
+        # Old ElevenLabs `v_*` ids and anything unknown fall back to the default.
+        voice_id = DEFAULT_VOICE
+    return {"provider": "vapi", "voiceId": voice_id, "speed": _voice_speed(config)}
 
 
 def _e164(raw: str) -> str:

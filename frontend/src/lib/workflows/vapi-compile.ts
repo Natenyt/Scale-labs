@@ -538,6 +538,12 @@ export function compileToVapiPayload(
     name: workflow.name.trim() || "Untitled workflow",
     nodes: workflow.nodes.map(mapNode),
     edges: workflow.edges.map(mapEdge),
+    // Low-latency defaults so browser/phone calls don't lag: Vapi native voice
+    // (no external TTS hop), a fast LLM, and fast STT. Without these Vapi falls
+    // back to slower defaults.
+    voice: { provider: "vapi", voiceId: "Elliot" },
+    model: { provider: "openai", model: "gpt-4o-mini" },
+    transcriber: { provider: "deepgram", model: "nova-3", language: "en" },
   };
   const globalPrompt = (workflow.globalPrompt ?? "").trim();
   if (globalPrompt) {

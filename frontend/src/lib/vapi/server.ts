@@ -225,6 +225,12 @@ export type VapiWorkflowPayload = {
   edges: unknown[];
   /** Optional workflow-wide system prompt (Vapi `globalPrompt`). */
   globalPrompt?: string;
+  /** Workflow-wide voice. Vapi native voice = lowest TTS latency. */
+  voice?: { provider: string; voiceId: string; speed?: number };
+  /** Workflow-wide STT. */
+  transcriber?: { provider: string; model: string; language?: string };
+  /** Workflow-wide LLM. */
+  model?: { provider: string; model: string };
 };
 
 export type VapiWorkflowResponse = {

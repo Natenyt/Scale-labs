@@ -63,14 +63,11 @@ export type Agent = {
 };
 
 export type Voice = {
+  /** Vapi native voice id (also the spoken name). */
   id: string;
   name: string;
   gender: "male" | "female";
-  age: "young" | "adult" | "mature";
-  language: Language;
-  /** Public preview mp3 — plays directly in an <audio> element, no key/CORS. */
-  previewUrl: string;
-  accent?: string;
+  description: string;
 };
 
 export type AgentTemplate = {
@@ -80,26 +77,19 @@ export type AgentTemplate = {
   defaults: Partial<Agent>;
 };
 
+// Vapi native voices (provider "vapi") — lowest TTS latency, no external hop.
+// `id` is the Vapi voiceId. Elliot is the default.
 export const VOICES: Voice[] = [
-  { id: "v_emma", name: "Emma", gender: "female", age: "adult", language: "en", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/01a3e33c-6e99-4ee7-8543-ff2216a32186.mp3", accent: "American" },
-  { id: "v_oliver", name: "Oliver", gender: "male", age: "adult", language: "en", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/CwhRBWXzGAHq8TQ4Fs17/58ee3ff5-f6f2-4628-93b8-e38eb31806b0.mp3", accent: "British" },
-  { id: "v_aria", name: "Aria", gender: "female", age: "young", language: "en", previewUrl: "https://api.us.elevenlabs.io/v1/voices/FGY2WhTYpPnrIDTdsKH5/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJwcmVtYWRlIiwiZmlsZW5hbWUiOiI2NzM0MTc1OS1hZDA4LTQxYTUtYmU2ZS1kZTEyZmU0NDg2MTgubXAzIiwidGltZXN0YW1wIjoxNzgwODQ4MDAwMDAwMDAwfQ%3D%3D", accent: "American" },
-  { id: "v_marcus", name: "Marcus", gender: "male", age: "mature", language: "en", previewUrl: "https://api.us.elevenlabs.io/v1/voices/IKne3meq5aSn9XLyUdCD/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJwcmVtYWRlIiwiZmlsZW5hbWUiOiIxMDJkZTZmMi0yMmVkLTQzZTAtYTFmMS0xMTFmYTc1YzU0ODEubXAzIiwidGltZXN0YW1wIjoxNzgwODQ4MDAwMDAwMDAwfQ%3D%3D", accent: "American" },
-  { id: "v_sophie", name: "Sophie", gender: "female", age: "young", language: "en", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/Xb7hH8MSUJpSbSDYk0k2/d10f7534-11f6-41fe-a012-2de1e482d336.mp3", accent: "British" },
-  { id: "v_james", name: "James", gender: "male", age: "adult", language: "en", previewUrl: "https://api.us.elevenlabs.io/v1/voices/JBFqnCBsd6RMkjVDRZzb/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJwcmVtYWRlIiwiZmlsZW5hbWUiOiJlNjIwNmQxYS0wNzIxLTQ3ODctYWFmYi0wNmE2ZTcwNWNhYzUubXAzIiwidGltZXN0YW1wIjoxNzgwODQ4MDAwMDAwMDAwfQ%3D%3D", accent: "Australian" },
-  { id: "v_alena", name: "Alena", gender: "female", age: "adult", language: "ru", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/XrExE9yKIg1WjnnlVkGX/b930e18d-6b4d-466e-bab2-0ae97c6d8535.mp3" },
-  { id: "v_filipp", name: "Filipp", gender: "male", age: "adult", language: "ru", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/N2lVS1w4EtoT3dr4eOWO/ac833bd8-ffda-4938-9ebc-b0f99ca25481.mp3" },
-  { id: "v_jane", name: "Jane", gender: "female", age: "young", language: "ru", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/cgSgspJ2msm6clMCkdW9/56a97bf8-b69b-448f-846c-c3a11683d45a.mp3" },
-  { id: "v_omazh", name: "Omazh", gender: "female", age: "mature", language: "ru", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/hpp4J3VqNfWAUOO0d1Us/dab0f5ba-3aa4-48a8-9fad-f138fea1126d.mp3" },
-  { id: "v_zahar", name: "Zahar", gender: "male", age: "mature", language: "ru", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/SOYHLrjzK2X1ezoPC6cr/86d178f6-f4b6-4e0e-85be-3de19f490794.mp3" },
-  { id: "v_ermil", name: "Ermil", gender: "male", age: "young", language: "ru", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/TX3LPaxmHKxFdv7VOQHJ/63148076-6363-42db-aea8-31424308b92c.mp3" },
-  { id: "v_nigora", name: "Nigora", gender: "female", age: "adult", language: "uz", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/pFZP5JQG7iQjIQuC4Bku/89b68b35-b3dd-4348-a84a-a3c13a3c2b30.mp3" },
-  { id: "v_bekhzod", name: "Bekhzod", gender: "male", age: "adult", language: "uz", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/bIHbv24MWmeRgasZH58o/8caf8f3d-ad29-4980-af41-53f20c72d7a4.mp3" },
-  { id: "v_madina", name: "Madina", gender: "female", age: "young", language: "uz", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/01a3e33c-6e99-4ee7-8543-ff2216a32186.mp3" },
-  { id: "v_azamat", name: "Azamat", gender: "male", age: "mature", language: "uz", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/cjVigY5qzO86Huf0OWal/d098fda0-6456-4030-b3d8-63aa048c9070.mp3" },
-  { id: "v_dilnoza", name: "Dilnoza", gender: "female", age: "mature", language: "uz", previewUrl: "https://api.us.elevenlabs.io/v1/voices/FGY2WhTYpPnrIDTdsKH5/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJwcmVtYWRlIiwiZmlsZW5hbWUiOiI2NzM0MTc1OS1hZDA4LTQxYTUtYmU2ZS1kZTEyZmU0NDg2MTgubXAzIiwidGltZXN0YW1wIjoxNzgwODQ4MDAwMDAwMDAwfQ%3D%3D" },
-  { id: "v_jasur", name: "Jasur", gender: "male", age: "young", language: "uz", previewUrl: "https://storage.googleapis.com/eleven-public-prod/premade/voices/iP95p4xoKVk53GoZ742B/3f4bde72-cc48-40dd-829f-57fbf906f4d7.mp3" },
+  { id: "Elliot", name: "Elliot", gender: "male", description: "Warm and natural — the default." },
+  { id: "Clara", name: "Clara", gender: "female", description: "Friendly and clear." },
+  { id: "Savannah", name: "Savannah", gender: "female", description: "Calm and professional." },
+  { id: "Emma", name: "Emma", gender: "female", description: "Approachable and upbeat." },
+  { id: "Rohan", name: "Rohan", gender: "male", description: "Confident and articulate." },
+  { id: "Kai", name: "Kai", gender: "male", description: "Bright and energetic." },
 ];
+
+/** Default voice (Vapi native). */
+export const DEFAULT_VOICE_ID = "Elliot";
 
 /** The single low-latency model every agent runs on (not user-selectable). */
 export const FIXED_MODEL = "gpt-4o-mini-cluster";
@@ -159,12 +149,7 @@ export const baseAgent = (
   description: "",
   status: "draft",
   tags: [],
-  voiceId:
-    overrides.language === "ru"
-      ? "v_alena"
-      : overrides.language === "uz"
-        ? "v_nigora"
-        : "v_emma",
+  voiceId: DEFAULT_VOICE_ID,
   speed: 1.0,
   model: FIXED_MODEL,
   systemPrompt:
@@ -208,8 +193,10 @@ export function makeAgentFromTemplate(
   });
 }
 
-export function getVoicesForLanguage(language: Language) {
-  return VOICES.filter((v) => v.language === language);
+// Vapi native voices are language-agnostic — the same voice speaks whatever the
+// model outputs — so the catalog is shown for every language.
+export function getVoicesForLanguage(_language: Language) {
+  return VOICES;
 }
 
 export function getVoiceById(id: string) {
