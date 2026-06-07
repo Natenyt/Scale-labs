@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckIcon, PlayIcon } from "lucide-react";
+import { CheckIcon, PauseIcon, PlayIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -27,32 +27,57 @@ export function SectionVoice({ agent, onChange }: Props) {
     [agent.language],
   );
 
-  // All voices use ElevenLabs Multilingual v2 (EN + RU + UZ from the same
-  // pool). The language tab in the studio is a UX grouping, not a different
-  // TTS provider. See backend `_voice_block` / `SCALE_VOICE_MAP`.
-  const provider = "ElevenLabs Multilingual v2";
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const [playingId, setPlayingId] = React.useState<string | null>(null);
 
-  const handlePlay = (voice: Voice) => {
-    toast.info(`Sample for ${voice.name} not yet wired`, {
-      description:
-        "In-page audio previews ship next — use 'Test agent' for a live call with this voice.",
-    });
-  };
+  const stop = React.useCallback(() => {
+    const a = audioRef.current;
+    if (a) {
+      a.pause();
+      a.currentTime = 0;
+    }
+    setPlayingId(null);
+  }, []);
+
+  React.useEffect(() => stop, [stop]);
+
+  const handlePlay = React.useCallback(
+    (voice: Voice) => {
+      // Toggle off if this sample is already playing.
+      if (playingId === voice.id) {
+        stop();
+        return;
+      }
+      stop();
+      if (!voice.previewUrl) {
+        toast.info(`No sample available for ${voice.name} yet.`);
+        return;
+      }
+      const a = new Audio(voice.previewUrl);
+      audioRef.current = a;
+      a.onended = () => setPlayingId(null);
+      a.onerror = () => {
+        setPlayingId(null);
+        toast.error(`Could not play the ${voice.name} sample.`);
+      };
+      void a.play().then(() => setPlayingId(voice.id)).catch(() => {
+        setPlayingId(null);
+        toast.error(`Could not play the ${voice.name} sample.`);
+      });
+    },
+    [playingId, stop],
+  );
 
   return (
     <SectionShell
       id="voice"
       title="Voice"
-      description="Pick how the agent sounds. Voice catalog adapts to the selected language."
-      action={
-        <Badge variant="outline" className="font-normal">
-          Powered by {provider}
-        </Badge>
-      }
+      description="Pick how the agent sounds and how fast it speaks."
     >
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {voices.map((voice) => {
           const selected = voice.id === agent.voiceId;
+          const isPlaying = playingId === voice.id;
           return (
             <div
               key={voice.id}
@@ -98,13 +123,17 @@ export function SectionVoice({ agent, onChange }: Props) {
               </button>
               <Button
                 type="button"
-                variant="outline"
+                variant={isPlaying ? "secondary" : "outline"}
                 size="sm"
                 className="h-7 w-full justify-start gap-2 text-xs"
                 onClick={() => handlePlay(voice)}
               >
-                <PlayIcon className="size-3" />
-                Play sample
+                {isPlaying ? (
+                  <PauseIcon className="size-3" />
+                ) : (
+                  <PlayIcon className="size-3" />
+                )}
+                {isPlaying ? "Stop" : "Play sample"}
               </Button>
             </div>
           );
@@ -126,13 +155,13 @@ export function SectionVoice({ agent, onChange }: Props) {
         <Slider
           value={[agent.speed]}
           min={0.7}
-          max={1.3}
+          max={1.2}
           step={0.05}
           onValueChange={(v) => onChange({ speed: Number(v[0].toFixed(2)) })}
         />
         <div className="text-muted-foreground flex justify-between text-[11px]">
           <span>Slower 0.7×</span>
-          <span>Faster 1.3×</span>
+          <span>Faster 1.2×</span>
         </div>
       </div>
     </SectionShell>

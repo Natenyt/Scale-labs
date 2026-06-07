@@ -53,7 +53,7 @@ export function SectionIdentity({ agent, onChange }: Props) {
 
       <FieldRow
         label="Primary language"
-        description="Determines which voice catalog and STT/TTS provider is used."
+        description="Sets the voice catalog the agent speaks in."
         htmlFor="agent-identity-language"
       >
         <Select
@@ -64,9 +64,9 @@ export function SectionIdentity({ agent, onChange }: Props) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="en">English · 11Labs</SelectItem>
-            <SelectItem value="ru">Russian · Yandex SpeechKit</SelectItem>
-            <SelectItem value="uz">Uzbek · Yandex SpeechKit</SelectItem>
+            <SelectItem value="en">English</SelectItem>
+            <SelectItem value="ru">Russian</SelectItem>
+            <SelectItem value="uz">Uzbek</SelectItem>
           </SelectContent>
         </Select>
       </FieldRow>

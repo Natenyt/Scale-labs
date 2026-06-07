@@ -79,12 +79,20 @@ export function SectionCrm({ agent, onChange }: Props) {
       title="CRM context"
       description="Bind this agent to a connected CRM. Records load automatically by phone number when calls start."
       action={
-        <Button asChild size="sm" variant="outline" className="h-8 gap-1.5">
-          <Link href="/integrations">
-            Manage integrations
-            <ExternalLinkIcon className="size-3" />
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className="border-amber-500/30 bg-amber-500/10 text-amber-300/90 text-[10px] font-normal"
+          >
+            Preview
+          </Badge>
+          <Button asChild size="sm" variant="outline" className="h-8 gap-1.5">
+            <Link href="/integrations">
+              Manage integrations
+              <ExternalLinkIcon className="size-3" />
+            </Link>
+          </Button>
+        </div>
       }
     >
       <FieldRow

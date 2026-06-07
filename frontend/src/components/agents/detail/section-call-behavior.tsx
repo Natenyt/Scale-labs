@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   type Agent,
   type RecordingFormat,
@@ -71,6 +72,25 @@ export function SectionCallBehavior({ agent, onChange }: Props) {
             </div>
           }
         />
+
+        {agent.voicemailDetection &&
+        agent.voicemailAction === "leave_message" ? (
+          <div className="border-border/50 grid gap-1.5 border-b py-3 pl-11">
+            <label
+              htmlFor="agent-voicemail-message"
+              className="text-muted-foreground text-xs"
+            >
+              Voicemail message
+            </label>
+            <Textarea
+              id="agent-voicemail-message"
+              value={agent.voicemailMessage}
+              rows={2}
+              placeholder="Hi, this is a courtesy call from Scale Labs — sorry we missed you. We'll try again soon."
+              onChange={(e) => onChange({ voicemailMessage: e.target.value })}
+            />
+          </div>
+        ) : null}
 
         <ToggleRow
           icon={<MicIcon className="size-4" />}

@@ -9,17 +9,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { MODELS, type Agent } from "@/lib/agents/types";
+import { type Agent } from "@/lib/agents/types";
 
 import { FieldRow, SectionShell } from "./section-shell";
 
@@ -60,45 +54,18 @@ export function SectionBehavior({ agent, onChange }: Props) {
   return (
     <SectionShell
       id="behavior"
-      title="Behavior"
-      description="The agent's brain. Pick a model, write its system prompt, and feed it knowledge."
+      title="Brain"
+      description="What the agent knows and how it behaves — its prompt, opening line, and reference documents."
     >
       <FieldRow
-        label="Model"
-        description="GPT-4o Mini Cluster is the default. Stronger models cost more per minute."
-        htmlFor="agent-behavior-model"
-      >
-        <Select
-          value={agent.model}
-          onValueChange={(v) => onChange({ model: v })}
-        >
-          <SelectTrigger id="agent-behavior-model" className="w-full sm:w-72">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {MODELS.map((m) => (
-              <SelectItem key={m.id} value={m.id}>
-                <div className="grid">
-                  <span>{m.name}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {m.description}
-                  </span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </FieldRow>
-
-      <FieldRow
-        label="System prompt"
-        description="The instructions the agent always follows. Be specific about tone, scope and what to refuse."
-        htmlFor="agent-behavior-system"
+        label="Agent prompt"
+        description="The instructions the agent always follows. Be specific about tone, scope, and what to refuse."
+        htmlFor="agent-behavior-prompt"
       >
         <div className="grid gap-2">
           <div className="relative">
             <Textarea
-              id="agent-behavior-system"
+              id="agent-behavior-prompt"
               value={agent.systemPrompt}
               rows={9}
               className="pr-24 font-mono text-xs leading-relaxed"
@@ -135,8 +102,18 @@ export function SectionBehavior({ agent, onChange }: Props) {
       </FieldRow>
 
       <FieldRow
-        label="Knowledge files"
-        description="Upload PDFs, markdown or text. The agent will use them to answer questions."
+        label={
+          <span className="inline-flex items-center gap-2">
+            Knowledge base
+            <Badge
+              variant="outline"
+              className="text-muted-foreground border-amber-500/30 bg-amber-500/10 text-amber-300/90 text-[10px] font-normal"
+            >
+              Preview
+            </Badge>
+          </span>
+        }
+        description="Upload documents the agent can search during a call to answer questions. Upload wiring is coming soon."
       >
         <div className="grid gap-3">
           <label

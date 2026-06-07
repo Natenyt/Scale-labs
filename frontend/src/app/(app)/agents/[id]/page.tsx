@@ -16,7 +16,7 @@ import { SectionBehavior } from "@/components/agents/detail/section-behavior";
 import { SectionCallBehavior } from "@/components/agents/detail/section-call-behavior";
 import { SectionCrm } from "@/components/agents/detail/section-crm";
 import { SectionIdentity } from "@/components/agents/detail/section-identity";
-import { SectionTools } from "@/components/agents/detail/section-tools";
+import { SectionTransfer } from "@/components/agents/detail/section-transfer";
 import { SectionVoice } from "@/components/agents/detail/section-voice";
 import { Button } from "@/components/ui/button";
 import type { Agent } from "@/lib/agents/types";
@@ -85,7 +85,7 @@ export default function AgentDetailPage() {
           <SectionIdentity agent={agent} onChange={onChange} />
           <SectionVoice agent={agent} onChange={onChange} />
           <SectionBehavior agent={agent} onChange={onChange} />
-          <SectionTools agent={agent} onChange={onChange} />
+          <SectionTransfer agent={agent} onChange={onChange} />
           <SectionCrm agent={agent} onChange={onChange} />
           <SectionCallBehavior agent={agent} onChange={onChange} />
         </div>
