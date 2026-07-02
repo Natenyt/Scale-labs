@@ -15,6 +15,9 @@ type DjangoWorkflow = {
   global_prompt?: string;
   graph?: { nodes?: Workflow["nodes"]; edges?: Workflow["edges"] };
   vapi_workflow_id?: string;
+  language?: Workflow["language"];
+  voice_id?: string;
+  voice_role?: string;
   created_at: string;
   updated_at: string;
 };
@@ -38,6 +41,9 @@ function mapWorkflow(w: DjangoWorkflow): Workflow {
     name: w.name,
     description: w.description || undefined,
     globalPrompt: w.global_prompt || undefined,
+    language: w.language ?? "en",
+    voiceId: w.voice_id || undefined,
+    voiceRole: w.voice_role || undefined,
     nodes: g.nodes ?? [],
     edges: g.edges ?? [],
     vapiWorkflowId: w.vapi_workflow_id || undefined,

@@ -36,9 +36,33 @@ import {
   type ExtractVariable,
   type ToolRef,
   type WorkflowEdge,
+  type WorkflowLanguage,
   type WorkflowNode,
 } from "@/lib/workflows/types";
 import { suggestEdgeConditionFromPrompt } from "@/lib/workflows/suggest-edge-condition";
+import {
+  DEFAULT_VOICE_ROLE,
+  defaultVoiceForLanguage,
+  getVoicesForLanguage,
+  VOICE_ROLES,
+} from "@/lib/agents/types";
+
+const WORKFLOW_LANGUAGES: { value: WorkflowLanguage; label: string }[] = [
+  { value: "en", label: "English" },
+  { value: "uz", label: "Uzbek" },
+  { value: "ru", label: "Russian" },
+];
+
+export type WorkflowVoiceSettings = {
+  language: WorkflowLanguage;
+  voiceId: string;
+  voiceRole: string;
+  onVoiceChange: (patch: {
+    language?: WorkflowLanguage;
+    voiceId?: string;
+    voiceRole?: string;
+  }) => void;
+};
 
 /**
  * Right inspector. Kind-specific form fields edit the currently selected node
@@ -64,7 +88,7 @@ export function WorkflowInspector({
   workflowSettings?: {
     globalPrompt: string;
     onGlobalPromptChange: (next: string) => void;
-  };
+  } & WorkflowVoiceSettings;
   onChange: (patch: Partial<WorkflowNode>) => void;
   onDelete: () => void;
 }) {
@@ -76,20 +100,23 @@ export function WorkflowInspector({
         </div>
         <div className="grid gap-3 overflow-y-auto pr-1">
           {workflowSettings ? (
-            <Field
-              label="Global prompt"
-              hint="Workflow-wide system prompt. Applied across every conversation node — useful for tone, language, and guardrails."
-            >
-              <Textarea
-                value={workflowSettings.globalPrompt}
-                onChange={(e) =>
-                  workflowSettings.onGlobalPromptChange(e.target.value)
-                }
-                placeholder="You are a polite, concise voice assistant. Always speak English…"
-                rows={6}
-                className="resize-none text-xs"
-              />
-            </Field>
+            <>
+              <WorkflowVoiceControls settings={workflowSettings} />
+              <Field
+                label="Global prompt"
+                hint="Workflow-wide system prompt. Applied across every conversation node — useful for tone, language, and guardrails."
+              >
+                <Textarea
+                  value={workflowSettings.globalPrompt}
+                  onChange={(e) =>
+                    workflowSettings.onGlobalPromptChange(e.target.value)
+                  }
+                  placeholder="You are a polite, concise voice assistant…"
+                  rows={6}
+                  className="resize-none text-xs"
+                />
+              </Field>
+            </>
           ) : null}
           <div className="text-muted-foreground/70 grid gap-1 text-[11px] leading-relaxed">
             <p className="text-foreground/80 text-xs font-medium">
@@ -770,6 +797,102 @@ function ApiRequestBody({
 // ---------------------------------------------------------------------------
 // Small helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Workflow-wide voice + language. English uses Vapi native voices; Uzbek and
+ * Russian route through the Yandex bridge (the backend swaps in the
+ * custom-voice / custom-transcriber stack at sync time). Changing the language
+ * resets the voice + speaking style to that language's defaults, mirroring the
+ * agent voice section.
+ */
+function WorkflowVoiceControls({
+  settings,
+}: {
+  settings: WorkflowVoiceSettings;
+}) {
+  const { language, voiceId, voiceRole, onVoiceChange } = settings;
+  const voices = getVoicesForLanguage(language);
+  const roles = VOICE_ROLES[language] ?? [];
+  const isBridge = language === "uz" || language === "ru";
+  const resolvedVoice =
+    voices.find((v) => v.id === voiceId)?.id ?? defaultVoiceForLanguage(language);
+  const resolvedRole = roles.includes(voiceRole) ? voiceRole : DEFAULT_VOICE_ROLE;
+
+  return (
+    <div className="border-border/40 bg-background/40 grid gap-3 rounded-md border p-2">
+      <Field
+        label="Language"
+        hint={
+          isBridge
+            ? "Uzbek & Russian speak through the Yandex SpeechKit bridge."
+            : "English uses Vapi's native low-latency voices."
+        }
+      >
+        <Select
+          value={language}
+          onValueChange={(v) =>
+            onVoiceChange({
+              language: v as WorkflowLanguage,
+              voiceId: defaultVoiceForLanguage(v as WorkflowLanguage),
+              voiceRole: DEFAULT_VOICE_ROLE,
+            })
+          }
+        >
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {WORKFLOW_LANGUAGES.map((l) => (
+              <SelectItem key={l.value} value={l.value} className="text-xs">
+                {l.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      {isBridge ? (
+        <Field label="Voice">
+          <Select
+            value={resolvedVoice}
+            onValueChange={(v) => onVoiceChange({ voiceId: v })}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {voices.map((v) => (
+                <SelectItem key={v.id} value={v.id} className="text-xs">
+                  {v.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      ) : null}
+
+      {roles.length > 1 ? (
+        <Field label="Speaking style">
+          <Select
+            value={resolvedRole}
+            onValueChange={(v) => onVoiceChange({ voiceRole: v })}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {roles.map((r) => (
+                <SelectItem key={r} value={r} className="text-xs capitalize">
+                  {r}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      ) : null}
+    </div>
+  );
+}
 
 function Field({
   label,

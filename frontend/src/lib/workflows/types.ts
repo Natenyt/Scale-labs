@@ -141,6 +141,11 @@ export type WorkflowEdge = {
 
 export type WorkflowSyncStatus = "idle" | "syncing" | "synced" | "error";
 
+/** Workflow-wide voice language. English uses Vapi native voices; Uzbek and
+ * Russian route through the Yandex SpeechKit bridge (the backend swaps in the
+ * custom-voice / custom-transcriber stack at sync time). */
+export type WorkflowLanguage = "en" | "ru" | "uz";
+
 export type Workflow = {
   id: string;
   name: string;
@@ -150,6 +155,12 @@ export type Workflow = {
    * for tone/guard-rails that apply across every conversation node.
    */
   globalPrompt?: string;
+  /** Voice language for every node. Defaults to English. */
+  language?: WorkflowLanguage;
+  /** Bridge voice id (uz: `yulduz`; ru: `alena`…). Ignored for English. */
+  voiceId?: string;
+  /** Bridge speaking style (uz roles: neutral/strict/friendly/whisper). */
+  voiceRole?: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   /** Set after a successful POST /workflow on Vapi. */

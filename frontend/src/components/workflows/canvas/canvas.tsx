@@ -66,12 +66,18 @@ export function WorkflowCanvas({
   workflow,
   onChange,
   onGlobalPromptChange,
+  onVoiceConfigChange,
   runtimeActiveNodeId = null,
   hideInspector = false,
 }: {
   workflow: Workflow;
   onChange: (next: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }) => void;
   onGlobalPromptChange?: (next: string) => void;
+  onVoiceConfigChange?: (patch: {
+    language?: Workflow["language"];
+    voiceId?: string;
+    voiceRole?: string;
+  }) => void;
   runtimeActiveNodeId?: string | null;
   hideInspector?: boolean;
 }) {
@@ -81,6 +87,7 @@ export function WorkflowCanvas({
         workflow={workflow}
         onChange={onChange}
         onGlobalPromptChange={onGlobalPromptChange}
+        onVoiceConfigChange={onVoiceConfigChange}
         runtimeActiveNodeId={runtimeActiveNodeId}
         hideInspector={hideInspector}
       />
@@ -170,12 +177,18 @@ function CanvasInner({
   workflow,
   onChange,
   onGlobalPromptChange,
+  onVoiceConfigChange,
   runtimeActiveNodeId,
   hideInspector,
 }: {
   workflow: Workflow;
   onChange: (next: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }) => void;
   onGlobalPromptChange?: (next: string) => void;
+  onVoiceConfigChange?: (patch: {
+    language?: Workflow["language"];
+    voiceId?: string;
+    voiceRole?: string;
+  }) => void;
   runtimeActiveNodeId: string | null;
   hideInspector: boolean;
 }) {
@@ -549,6 +562,10 @@ function CanvasInner({
                 ? {
                     globalPrompt: workflow.globalPrompt ?? "",
                     onGlobalPromptChange,
+                    language: workflow.language ?? "en",
+                    voiceId: workflow.voiceId ?? "",
+                    voiceRole: workflow.voiceRole ?? "",
+                    onVoiceChange: onVoiceConfigChange ?? (() => {}),
                   }
                 : undefined
             }

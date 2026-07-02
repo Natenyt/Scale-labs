@@ -48,6 +48,11 @@ async function postVapiSync(
         json: {
           vapi_payload: vapiPayload,
           vapi_workflow_id: record.vapiWorkflowId ?? null,
+          // Voice is resolved server-side (the bridge secret stays in Django):
+          // English keeps the compiled defaults, uz/ru get the Yandex bridge.
+          language: record.language ?? "en",
+          voice_id: record.voiceId ?? "",
+          voice_role: record.voiceRole ?? "",
         },
       },
     );
@@ -153,6 +158,9 @@ export async function syncWorkflow(
             name: record.name,
             description: record.description ?? "",
             global_prompt: record.globalPrompt ?? "",
+            language: record.language ?? "en",
+            voice_id: record.voiceId ?? "",
+            voice_role: record.voiceRole ?? "",
             graph: { nodes: record.nodes, edges: record.edges },
           },
         });

@@ -43,6 +43,13 @@ class Workflow(TimeStampedModel):
     global_prompt = models.TextField(blank=True, default="")
     graph = models.JSONField(default=dict, blank=True)  # { nodes: [], edges: [] }
     vapi_workflow_id = models.CharField(max_length=64, blank=True, default="")
+    # Workflow-wide voice language. "en" -> Vapi native voice; "uz"/"ru" -> the
+    # Yandex SpeechKit bridge (custom-voice/custom-transcriber). The bridge stack
+    # is injected server-side at sync time (WorkflowViewSet.sync_vapi) so the
+    # bridge secret never reaches the client.
+    language = models.CharField(max_length=8, default="en")
+    voice_id = models.CharField(max_length=64, blank=True, default="")
+    voice_role = models.CharField(max_length=32, blank=True, default="")
 
     class Meta:
         ordering = ["-updated_at"]

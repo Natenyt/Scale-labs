@@ -115,6 +115,9 @@ export type CreateWorkflowInput = {
   nodes?: WorkflowNode[];
   edges?: WorkflowEdge[];
   globalPrompt?: string;
+  language?: Workflow["language"];
+  voiceId?: string;
+  voiceRole?: string;
   vapiWorkflowId?: string;
   lastSyncedAt?: string;
   createdAt?: string;
@@ -131,6 +134,9 @@ export function createWorkflow(input: CreateWorkflowInput): Workflow {
     nodes: input.nodes?.length ? input.nodes : [defaultStartNode()],
     edges: input.edges ?? [],
     globalPrompt: input.globalPrompt,
+    language: input.language ?? "en",
+    voiceId: input.voiceId,
+    voiceRole: input.voiceRole,
     vapiWorkflowId: input.vapiWorkflowId,
     lastSyncedAt: input.lastSyncedAt,
     syncStatus: "idle",
@@ -144,7 +150,17 @@ export function createWorkflow(input: CreateWorkflowInput): Workflow {
 }
 
 type UpdatableFields = Partial<
-  Pick<Workflow, "name" | "description" | "globalPrompt" | "nodes" | "edges">
+  Pick<
+    Workflow,
+    | "name"
+    | "description"
+    | "globalPrompt"
+    | "language"
+    | "voiceId"
+    | "voiceRole"
+    | "nodes"
+    | "edges"
+  >
 >;
 
 export function updateWorkflow(id: string, patch: UpdatableFields): void {

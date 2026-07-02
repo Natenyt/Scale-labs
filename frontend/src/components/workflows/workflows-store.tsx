@@ -40,7 +40,14 @@ type WorkflowsHook = {
     patch: Partial<
       Pick<
         Workflow,
-        "name" | "description" | "globalPrompt" | "nodes" | "edges"
+        | "name"
+        | "description"
+        | "globalPrompt"
+        | "language"
+        | "voiceId"
+        | "voiceRole"
+        | "nodes"
+        | "edges"
       >
     >,
   ) => void;

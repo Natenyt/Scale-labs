@@ -153,6 +153,31 @@ _BRIDGE_START_SPEAKING_PLAN: dict[str, Any] = {
 }
 
 
+def resolve_language_voice(
+    language: str, voice_id: str = "", voice_role: str = ""
+) -> dict[str, Any]:
+    """Voice + transcriber (+ endpointing) for one language.
+
+    Shared by the agent payload builder and the workflow sync so both emit an
+    identical Yandex bridge stack for uz/ru: English -> Vapi native voice +
+    Deepgram STT; Uzbek/Russian -> custom-voice / custom-transcriber built from
+    the bridge env (secret stays server-side). Returns the three payload pieces;
+    `startSpeakingPlan` is present only for bridge languages when the bridge is
+    configured.
+    """
+    lang = language.strip().lower() if isinstance(language, str) else "en"
+    if lang not in ("en", "ru", "uz"):
+        lang = "en"
+    config = {"voiceId": voice_id, "voiceRole": voice_role}
+    stack: dict[str, Any] = {
+        "voice": _voice_block(lang, config),
+        "transcriber": _transcriber_for_language(lang, config),
+    }
+    if is_bridge_language(lang) and _bridge_configured():
+        stack["startSpeakingPlan"] = _BRIDGE_START_SPEAKING_PLAN
+    return stack
+
+
 def _e164(raw: str) -> str:
     """Best-effort normalize a phone number to E.164 (keep leading +, digits)."""
     s = (raw or "").strip()

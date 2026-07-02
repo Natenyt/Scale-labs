@@ -59,6 +59,9 @@ class WorkflowSerializer(serializers.ModelSerializer):
             "global_prompt",
             "graph",
             "vapi_workflow_id",
+            "language",
+            "voice_id",
+            "voice_role",
             "created_at",
             "updated_at",
         )

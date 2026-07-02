@@ -147,6 +147,9 @@ export default function WorkflowDetailPage() {
             onGlobalPromptChange={(globalPrompt) =>
               updateWorkflow(workflow.id, { globalPrompt })
             }
+            onVoiceConfigChange={(patch) =>
+              updateWorkflow(workflow.id, patch)
+            }
             runtimeActiveNodeId={testMode ? runtimeActiveNodeId : null}
             hideInspector={testMode}
           />

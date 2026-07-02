@@ -40,7 +40,10 @@ from apps.studio.serializers import (
     _parse_ext_id,
 )
 from apps.studio.services import vapi as vapi_service
-from apps.studio.services.agent_assistant import build_vapi_assistant_payload
+from apps.studio.services.agent_assistant import (
+    build_vapi_assistant_payload,
+    resolve_language_voice,
+)
 from apps.studio.services.campaign_builder import (
     build_vapi_campaign,
     validate_customers,
@@ -221,8 +224,11 @@ class WorkflowViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="sync-vapi")
     def sync_vapi(self, request: Request, pk=None):
         """
-        Body: { "vapi_payload": { "name", "nodes", "edges", "globalPrompt"? }, "vapi_workflow_id"? }
-        Client may compile using the same rules as Next.js; server forwards to Vapi.
+        Body: { "vapi_payload": { "name", "nodes", "edges", "globalPrompt"? },
+                "vapi_workflow_id"?, "language"?, "voice_id"?, "voice_role"? }
+        Client compiles the graph; the server owns the voice stack so the bridge
+        secret never reaches the browser. English keeps the client's low-latency
+        Vapi defaults; Uzbek/Russian get the Yandex bridge voice + transcriber.
         """
         wf = self.get_object()
         body = request.data
@@ -232,6 +238,24 @@ class WorkflowViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
                 {"error": "vapi_payload object required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        language = str(body.get("language") or wf.language or "en").strip().lower()
+        voice_id = str(body.get("voice_id") or wf.voice_id or "")
+        voice_role = str(body.get("voice_role") or wf.voice_role or "")
+        if language in ("uz", "ru"):
+            stack = resolve_language_voice(language, voice_id, voice_role)
+            payload["voice"] = stack["voice"]
+            payload["transcriber"] = stack["transcriber"]
+            if "startSpeakingPlan" in stack:
+                payload["startSpeakingPlan"] = stack["startSpeakingPlan"]
+        # Persist the language snapshot alongside the sync so a reload rehydrates
+        # the selection (the row PATCH from the client may race the sync body).
+        if (wf.language, wf.voice_id, wf.voice_role) != (language, voice_id, voice_role):
+            wf.language = language
+            wf.voice_id = voice_id
+            wf.voice_role = voice_role
+            wf.save(update_fields=["language", "voice_id", "voice_role", "updated_at"])
+
         vid = body.get("vapi_workflow_id") or wf.vapi_workflow_id
         try:
             if vid:
