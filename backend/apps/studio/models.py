@@ -79,6 +79,31 @@ class NotionIntegration(TimeStampedModel):
         return f"{self.label} ({self.database_id})"
 
 
+class Squad(TimeStampedModel):
+    """A team of agents that hand off to each other mid-call (Vapi squad).
+
+    ``graph`` holds the canvas layout: { nodes: [{id, agentId, position,
+    isStart}], edges: [{id, source, target, condition}] }. The authoritative
+    member list is resolved server-side from the org's Agent rows on save.
+    """
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="squads",
+    )
+    name = models.CharField(max_length=255)
+    graph = models.JSONField(default=dict, blank=True)
+    vapi_squad_id = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        ordering = ["-updated_at"]
+        indexes = [models.Index(fields=["organization", "updated_at"])]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class PhoneNumber(TimeStampedModel):
     """Org ownership of a Vapi phone number.
 

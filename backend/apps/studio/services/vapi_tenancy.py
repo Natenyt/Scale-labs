@@ -5,7 +5,7 @@ from __future__ import annotations
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from apps.accounts.models import Organization
-from apps.studio.models import Agent, Workflow
+from apps.studio.models import Agent, Squad, Workflow
 from apps.studio.serializers import _parse_ext_id
 
 
@@ -51,6 +51,42 @@ def resolve_vapi_assistant_id(
 
     raise ValidationError(
         {"detail": "Provide agent_id (Scale Labs) or a registered assistant_id."},
+    )
+
+
+def resolve_vapi_squad_id(
+    organization: Organization,
+    *,
+    squad_id: str | None = None,
+    vapi_squad_id: str | None = None,
+) -> str:
+    """Return Vapi squad id for this org from ``sq_*`` or stored vapi id."""
+    sid = (squad_id or "").strip()
+    raw = (vapi_squad_id or "").strip()
+
+    if sid:
+        pk = _parse_ext_id("sq", sid)
+        if pk is None:
+            raise ValidationError({"squad_id": "Invalid squad id."})
+        squad = Squad.objects.filter(organization=organization, pk=pk).first()
+        if not squad:
+            raise PermissionDenied("Squad not found in your organization.")
+        vid = (squad.vapi_squad_id or "").strip()
+        if not vid:
+            raise ValidationError({"squad_id": "Squad is not synced to voice yet."})
+        return vid
+
+    if raw:
+        squad = Squad.objects.filter(
+            organization=organization,
+            vapi_squad_id=raw,
+        ).first()
+        if not squad:
+            raise PermissionDenied("Squad id is not registered for your organization.")
+        return raw
+
+    raise ValidationError(
+        {"detail": "Provide squad_id (Scale Labs) or a registered vapi squad id."},
     )
 
 

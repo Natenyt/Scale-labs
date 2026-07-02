@@ -95,6 +95,22 @@ def delete_workflow(wf_id: str) -> None:
     vapi_request("DELETE", f"/workflow/{wf_id}")
 
 
+def create_squad(payload: dict[str, Any]) -> dict[str, Any]:
+    return vapi_request("POST", "/squad", payload)  # type: ignore[return-value]
+
+
+def get_squad(squad_id: str) -> dict[str, Any]:
+    return vapi_request("GET", f"/squad/{squad_id}")  # type: ignore[return-value]
+
+
+def update_squad(squad_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return vapi_request("PATCH", f"/squad/{squad_id}", payload)  # type: ignore[return-value]
+
+
+def delete_squad(squad_id: str) -> None:
+    vapi_request("DELETE", f"/squad/{squad_id}")
+
+
 def create_phone_call(payload: dict[str, Any]) -> dict[str, Any]:
     """
     Outbound PSTN — POST /call (Vapi).

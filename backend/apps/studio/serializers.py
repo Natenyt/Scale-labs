@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from apps.studio.models import Agent, Call, CallEvent, NotionIntegration, Workflow
+from apps.studio.models import Agent, Call, CallEvent, NotionIntegration, Squad, Workflow
 from apps.studio.services.crypto import decrypt_str, encrypt_str
 
 
@@ -67,6 +67,32 @@ class WorkflowSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data["id"] = _ext_id("wf", instance.pk)
+        return data
+
+    def create(self, validated_data):
+        validated_data["organization"] = self.context["request"].organization
+        return super().create(validated_data)
+
+
+class SquadSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(read_only=True)
+    vapi_squad_id = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Squad
+        fields = (
+            "id",
+            "name",
+            "graph",
+            "vapi_squad_id",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "vapi_squad_id", "created_at", "updated_at")
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["id"] = _ext_id("sq", instance.pk)
         return data
 
     def create(self, validated_data):
@@ -177,6 +203,7 @@ class WebCallConfigSerializer(serializers.Serializer):
     assistant_id = serializers.CharField(max_length=64, required=False, allow_blank=True)
     workflow_id = serializers.CharField(max_length=32, required=False, allow_blank=True)
     vapi_workflow_id = serializers.CharField(max_length=64, required=False, allow_blank=True)
+    squad_id = serializers.CharField(max_length=32, required=False, allow_blank=True)
 
     def validate(self, attrs):
         has_agent = bool((attrs.get("agent_id") or "").strip()) or bool(
@@ -185,9 +212,10 @@ class WebCallConfigSerializer(serializers.Serializer):
         has_wf = bool((attrs.get("workflow_id") or "").strip()) or bool(
             (attrs.get("vapi_workflow_id") or "").strip()
         )
-        if not has_agent and not has_wf:
+        has_squad = bool((attrs.get("squad_id") or "").strip())
+        if not has_agent and not has_wf and not has_squad:
             raise serializers.ValidationError(
-                "Provide agent_id or workflow_id for a voice session.",
+                "Provide agent_id, workflow_id or squad_id for a voice session.",
             )
         return attrs
 

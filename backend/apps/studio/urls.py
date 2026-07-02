@@ -6,6 +6,7 @@ from apps.studio import views
 router = DefaultRouter()
 router.register(r"agents", views.AgentViewSet, basename="agent")
 router.register(r"workflows", views.WorkflowViewSet, basename="workflow")
+router.register(r"squads", views.SquadViewSet, basename="squad")
 router.register(
     r"integrations/notion",
     views.NotionIntegrationViewSet,

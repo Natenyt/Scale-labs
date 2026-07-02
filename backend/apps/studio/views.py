@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.studio.mixins import ExternalIdLookupMixin
-from apps.studio.models import Agent, Call, CallEvent, CallDirection, CallStatus, NotionIntegration, PhoneNumber, Workflow
+from apps.studio.models import Agent, Call, CallEvent, CallDirection, CallStatus, NotionIntegration, PhoneNumber, Squad, Workflow
 from apps.studio.permissions import HasActiveOrganization
 from apps.studio.serializers import (
     AgentSerializer,
@@ -32,14 +32,22 @@ from apps.studio.serializers import (
     OutboundCallSerializer,
     PhoneNumberCreateSerializer,
     PhoneNumberUpdateSerializer,
+    SquadSerializer,
     WebCallConfigSerializer,
     WorkflowSerializer,
     _parse_ext_id,
 )
 from apps.studio.services import vapi as vapi_service
 from apps.studio.services.agent_assistant import build_vapi_assistant_payload
+from apps.studio.services.squad_builder import (
+    SquadGraphError,
+    build_vapi_squad,
+    normalized_graph,
+    resolve_graph,
+)
 from apps.studio.services.vapi_tenancy import (
     resolve_vapi_assistant_id,
+    resolve_vapi_squad_id,
     resolve_vapi_workflow_id,
 )
 from apps.studio.services.crypto import decrypt_str, encrypt_str
@@ -241,6 +249,82 @@ class WorkflowViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
         wf.vapi_workflow_id = new_id
         wf.save(update_fields=["vapi_workflow_id", "updated_at"])
         return Response({"ok": True, "vapiWorkflowId": new_id, "vapi": res})
+
+
+class SquadViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
+    """Squads: a canvas graph of org agents compiled to a Vapi squad.
+
+    Vapi is the runtime source of truth (create/update push before saving);
+    the graph JSON is the persisted canvas snapshot.
+    """
+
+    serializer_class = SquadSerializer
+    permission_classes = [IsAuthenticated, HasActiveOrganization]
+    ext_prefix = "sq"
+
+    def get_queryset(self):
+        return Squad.objects.filter(organization=self.request.organization)
+
+    def _compile(self, name: str, graph: dict):
+        try:
+            nodes, edges = resolve_graph(self.request.organization, graph or {})
+        except SquadGraphError as e:
+            raise ValidationError({"graph": str(e)}) from e
+        return build_vapi_squad(name, nodes, edges), normalized_graph(nodes, edges)
+
+    def perform_create(self, serializer) -> None:
+        if not (settings.VAPI_API_KEY or "").strip():
+            raise ValidationError(
+                {"detail": "VAPI_API_KEY is not configured on the server."},
+            )
+        name = serializer.validated_data["name"]
+        payload, snapshot = self._compile(
+            name,
+            serializer.validated_data.get("graph") or {},
+        )
+        try:
+            res = vapi_service.create_squad(payload)
+        except vapi_service.VapiApiError as e:
+            raise ValidationError({"vapi": e.body}) from e
+        except RuntimeError as e:
+            raise ValidationError({"detail": str(e)}) from e
+        vid = str(res.get("id") or "").strip()
+        if not vid:
+            raise ValidationError({"vapi": "Vapi did not return a squad id."})
+        serializer.save(vapi_squad_id=vid, graph=snapshot)
+
+    def perform_update(self, serializer) -> None:
+        squad: Squad = serializer.instance
+        name = serializer.validated_data.get("name", squad.name)
+        graph = serializer.validated_data.get("graph", squad.graph)
+        payload, snapshot = self._compile(name, graph)
+        vid = (squad.vapi_squad_id or "").strip()
+        try:
+            if vid:
+                try:
+                    vapi_service.update_squad(vid, payload)
+                except vapi_service.VapiApiError as e:
+                    if e.status != 404:
+                        raise
+                    res = vapi_service.create_squad(payload)
+                    vid = str(res.get("id") or "").strip()
+            else:
+                res = vapi_service.create_squad(payload)
+                vid = str(res.get("id") or "").strip()
+        except vapi_service.VapiApiError as e:
+            raise ValidationError({"vapi": e.body}) from e
+        except RuntimeError as e:
+            raise ValidationError({"detail": str(e)}) from e
+        serializer.save(vapi_squad_id=vid, graph=snapshot)
+
+    def perform_destroy(self, instance: Squad) -> None:
+        vid = (instance.vapi_squad_id or "").strip()
+        if vid and (settings.VAPI_API_KEY or "").strip():
+            try:
+                vapi_service.delete_squad(vid)
+            except vapi_service.VapiApiError:
+                pass  # best-effort remote cleanup; always delete the row
+        super().perform_destroy(instance)
 
 
 class NotionIntegrationViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
@@ -1002,12 +1086,15 @@ class WebCallConfigView(APIView):
         data = ser.validated_data
         assistant_id: str | None = None
         workflow_id: str | None = None
+        squad_id: str | None = None
         if (data.get("agent_id") or "").strip() or (data.get("assistant_id") or "").strip():
             assistant_id = resolve_vapi_assistant_id(
                 org,
                 agent_id=data.get("agent_id"),
                 assistant_id=data.get("assistant_id"),
             )
+        elif (data.get("squad_id") or "").strip():
+            squad_id = resolve_vapi_squad_id(org, squad_id=data.get("squad_id"))
         else:
             workflow_id = resolve_vapi_workflow_id(
                 org,
@@ -1019,6 +1106,7 @@ class WebCallConfigView(APIView):
                 "publicKey": pub,
                 "assistantId": assistant_id,
                 "workflowId": workflow_id,
+                "squadId": squad_id,
             }
         )
 

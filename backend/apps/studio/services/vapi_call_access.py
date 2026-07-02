@@ -7,7 +7,7 @@ from typing import Any
 from rest_framework.exceptions import PermissionDenied
 
 from apps.accounts.models import Organization
-from apps.studio.models import Agent, PhoneNumber, Workflow
+from apps.studio.models import Agent, PhoneNumber, Squad, Workflow
 
 
 @dataclass(frozen=True)
@@ -18,6 +18,7 @@ class OrgVapiResourceIds:
     phone_number_ids: frozenset[str] = frozenset()
     # Vapi phone-number ids owned by OTHER orgs — always invisible here.
     foreign_phone_number_ids: frozenset[str] = frozenset()
+    squad_ids: frozenset[str] = frozenset()
 
 
 def org_vapi_resource_ids(organization: Organization) -> OrgVapiResourceIds:
@@ -53,11 +54,21 @@ def org_vapi_resource_ids(organization: Organization) -> OrgVapiResourceIds:
         else:
             foreign_phone_ids.add(s)
 
+    squad_ids: set[str] = set()
+    for vid in Squad.objects.filter(organization=organization).values_list(
+        "vapi_squad_id",
+        flat=True,
+    ):
+        s = (vid or "").strip()
+        if s:
+            squad_ids.add(s)
+
     return OrgVapiResourceIds(
         assistant_ids=frozenset(assistant_ids),
         workflow_ids=frozenset(workflow_ids),
         phone_number_ids=frozenset(phone_ids),
         foreign_phone_number_ids=frozenset(foreign_phone_ids),
+        squad_ids=frozenset(squad_ids),
     )
 
 
@@ -67,6 +78,9 @@ def call_belongs_to_org(call: dict[str, Any], ids: OrgVapiResourceIds) -> bool:
         return True
     wid = str(call.get("workflowId") or "").strip()
     if wid and wid in ids.workflow_ids:
+        return True
+    sid = str(call.get("squadId") or "").strip()
+    if sid and sid in ids.squad_ids:
         return True
     return False
 
