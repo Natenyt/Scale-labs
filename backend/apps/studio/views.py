@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.studio.mixins import ExternalIdLookupMixin
-from apps.studio.models import Agent, Call, CallEvent, CallDirection, CallStatus, NotionIntegration, Workflow
+from apps.studio.models import Agent, Call, CallEvent, CallDirection, CallStatus, NotionIntegration, PhoneNumber, Workflow
 from apps.studio.permissions import HasActiveOrganization
 from apps.studio.serializers import (
     AgentSerializer,
@@ -616,6 +616,21 @@ class PhoneNumberListCreateView(APIView):
         except RuntimeError as e:
             return Response({"error": str(e)}, status=500)
 
+        # Ownership row: makes the number visible ONLY to this org (the Vapi
+        # list is account-wide). Auth token is intentionally not stored.
+        vapi_id = str(raw.get("id") or "").strip()
+        if vapi_id:
+            PhoneNumber.objects.update_or_create(
+                vapi_phone_number_id=vapi_id,
+                defaults={
+                    "organization": org,
+                    "number": str(raw.get("number") or data.get("number") or ""),
+                    "provider": str(raw.get("provider") or data.get("provider") or ""),
+                    "name": str(data.get("name") or ""),
+                    "twilio_account_sid": str(data.get("twilio_account_sid") or ""),
+                },
+            )
+
         return Response(
             normalize_phone_number_detail(raw, org),
             status=201,
@@ -754,6 +769,8 @@ class PhoneNumberDetailView(APIView):
             )
         except RuntimeError as e:
             return Response({"error": str(e)}, status=500)
+
+        PhoneNumber.objects.filter(vapi_phone_number_id=pid).delete()
 
         return Response(status=204)
 

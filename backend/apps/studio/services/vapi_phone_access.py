@@ -14,6 +14,16 @@ def _str_id(row: dict[str, Any], key: str) -> str:
 
 
 def phone_number_belongs_to_org(row: dict[str, Any], ids: OrgVapiResourceIds) -> bool:
+    # Ownership rows (PhoneNumber model) are authoritative: numbers created
+    # through the platform are visible only to the org that created them.
+    row_id = _str_id(row, "id")
+    if row_id and row_id in ids.phone_number_ids:
+        return True
+    if row_id and row_id in ids.foreign_phone_number_ids:
+        return False
+
+    # Legacy fallback for numbers that pre-date ownership rows: infer from the
+    # inbound assignment; a fully unassigned legacy number stays visible.
     assistant_id = _str_id(row, "assistantId")
     workflow_id = _str_id(row, "workflowId")
     squad_id = _str_id(row, "squadId")

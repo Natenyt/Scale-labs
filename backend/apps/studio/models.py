@@ -79,6 +79,35 @@ class NotionIntegration(TimeStampedModel):
         return f"{self.label} ({self.database_id})"
 
 
+class PhoneNumber(TimeStampedModel):
+    """Org ownership of a Vapi phone number.
+
+    Vapi's phone-number list is account-wide; without this row an unassigned
+    number is visible (and claimable) by every organization. The row is written
+    when a number is created/imported through the platform and consulted first
+    by the access checks. The Twilio auth token is passed through to Vapi at
+    import and NEVER stored here.
+    """
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="phone_numbers",
+    )
+    vapi_phone_number_id = models.CharField(max_length=64, unique=True)
+    number = models.CharField(max_length=32, blank=True, default="")
+    provider = models.CharField(max_length=32, blank=True, default="")
+    name = models.CharField(max_length=255, blank=True, default="")
+    twilio_account_sid = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["organization", "created_at"])]
+
+    def __str__(self) -> str:
+        return self.number or self.vapi_phone_number_id
+
+
 class CallDirection(models.TextChoices):
     WEB = "web", "Web"
     OUTBOUND = "outbound", "Outbound PSTN"
