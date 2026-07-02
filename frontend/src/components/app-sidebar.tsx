@@ -12,6 +12,7 @@ import {
   ScrollText,
   Users,
   Waves,
+  Megaphone,
   Workflow,
   Wrench,
 } from "lucide-react";
@@ -42,6 +43,7 @@ const navGroups: NavGroup[] = [
       { title: "Tools", url: "/tools", icon: Wrench },
       { title: "Workflow", url: "/workflow", icon: Workflow },
       { title: "Call", url: "/calls", icon: PhoneOutgoing },
+      { title: "Campaigns", url: "/campaigns", icon: Megaphone },
     ],
   },
   {
