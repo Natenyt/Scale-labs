@@ -9,7 +9,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { Agent, Language } from "@/lib/agents/types";
+import {
+  DEFAULT_VOICE_ROLE,
+  defaultVoiceForLanguage,
+  type Agent,
+  type Language,
+} from "@/lib/agents/types";
 
 import { FieldRow, SectionShell } from "./section-shell";
 
@@ -58,7 +63,15 @@ export function SectionIdentity({ agent, onChange }: Props) {
       >
         <Select
           value={agent.language}
-          onValueChange={(v) => onChange({ language: v as Language })}
+          onValueChange={(v) => {
+            const language = v as Language;
+            // Each language has its own voice catalog — reset to its default.
+            onChange({
+              language,
+              voiceId: defaultVoiceForLanguage(language),
+              voiceRole: DEFAULT_VOICE_ROLE,
+            });
+          }}
         >
           <SelectTrigger id="agent-identity-language" className="w-full sm:w-64">
             <SelectValue />

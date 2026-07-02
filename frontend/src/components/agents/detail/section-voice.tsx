@@ -6,7 +6,12 @@ import { CheckIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
-import { getVoicesForLanguage, type Agent } from "@/lib/agents/types";
+import {
+  DEFAULT_VOICE_ROLE,
+  VOICE_ROLES,
+  getVoicesForLanguage,
+  type Agent,
+} from "@/lib/agents/types";
 
 import { SectionShell } from "./section-shell";
 
@@ -20,6 +25,7 @@ export function SectionVoice({ agent, onChange }: Props) {
     () => getVoicesForLanguage(agent.language),
     [agent.language],
   );
+  const roles = VOICE_ROLES[agent.language] ?? [];
 
   return (
     <SectionShell
@@ -71,30 +77,64 @@ export function SectionVoice({ agent, onChange }: Props) {
         })}
       </div>
 
-      <div className="border-border/50 grid gap-4 border-t pt-5">
-        <div className="flex items-center justify-between">
+      {roles.length > 1 && (
+        <div className="border-border/50 grid gap-3 border-t pt-5">
           <div className="grid gap-1">
-            <div className="text-sm font-medium">Speech speed</div>
+            <div className="text-sm font-medium">Speaking style</div>
             <p className="text-muted-foreground text-xs">
-              How fast the agent talks. 1.0× is natural pace.
+              How the voice delivers its lines.
             </p>
           </div>
-          <Badge variant="secondary" className="tabular-nums">
-            {agent.speed.toFixed(2)}×
-          </Badge>
+          <div className="flex flex-wrap gap-2">
+            {roles.map((role) => {
+              const selected = role === (agent.voiceRole || DEFAULT_VOICE_ROLE);
+              return (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => onChange({ voiceRole: role })}
+                  className={cn(
+                    "border-input bg-card rounded-full border px-3 py-1.5 text-xs font-medium capitalize transition",
+                    "hover:bg-accent/40 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+                    selected
+                      ? "border-foreground/40 bg-accent/40 ring-foreground/20 ring-2"
+                      : "text-muted-foreground ring-1 ring-transparent",
+                  )}
+                >
+                  {role}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <Slider
-          value={[agent.speed]}
-          min={0.7}
-          max={1.2}
-          step={0.05}
-          onValueChange={(v) => onChange({ speed: Number(v[0].toFixed(2)) })}
-        />
-        <div className="text-muted-foreground flex justify-between text-[11px]">
-          <span>Slower 0.7×</span>
-          <span>Faster 1.2×</span>
+      )}
+
+      {agent.language === "en" && (
+        <div className="border-border/50 grid gap-4 border-t pt-5">
+          <div className="flex items-center justify-between">
+            <div className="grid gap-1">
+              <div className="text-sm font-medium">Speech speed</div>
+              <p className="text-muted-foreground text-xs">
+                How fast the agent talks. 1.0× is natural pace.
+              </p>
+            </div>
+            <Badge variant="secondary" className="tabular-nums">
+              {agent.speed.toFixed(2)}×
+            </Badge>
+          </div>
+          <Slider
+            value={[agent.speed]}
+            min={0.7}
+            max={1.2}
+            step={0.05}
+            onValueChange={(v) => onChange({ speed: Number(v[0].toFixed(2)) })}
+          />
+          <div className="text-muted-foreground flex justify-between text-[11px]">
+            <span>Slower 0.7×</span>
+            <span>Faster 1.2×</span>
+          </div>
         </div>
-      </div>
+      )}
     </SectionShell>
   );
 }

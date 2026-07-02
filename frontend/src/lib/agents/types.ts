@@ -30,6 +30,8 @@ export type Agent = {
   status: AgentStatus;
   tags: string[];
   voiceId: string;
+  /** Speaking style for bridge (Yandex) voices, e.g. "neutral" | "friendly". */
+  voiceRole: string;
   speed: number;
   /** Fixed server-side to a low-latency model; not user-selectable. */
   model: string;
@@ -77,8 +79,8 @@ export type AgentTemplate = {
   defaults: Partial<Agent>;
 };
 
-// Vapi native voices (provider "vapi") — lowest TTS latency, no external hop.
-// `id` is the Vapi voiceId. Elliot is the default.
+// English: Vapi native voices (provider "vapi") — lowest TTS latency, no
+// external hop. `id` is the Vapi voiceId. Elliot is the default.
 export const VOICES: Voice[] = [
   { id: "Elliot", name: "Elliot", gender: "male", description: "Warm and natural — the default." },
   { id: "Clara", name: "Clara", gender: "female", description: "Friendly and clear." },
@@ -88,8 +90,38 @@ export const VOICES: Voice[] = [
   { id: "Kai", name: "Kai", gender: "male", description: "Bright and energetic." },
 ];
 
-/** Default voice (Vapi native). */
+// Uzbek + Russian: Yandex SpeechKit voices served through the Scale Labs voice
+// bridge (the backend maps them to Vapi custom-voice/custom-transcriber).
+// Keep in sync with backend apps/studio/services/voice_catalog.py.
+export const UZ_VOICES: Voice[] = [
+  { id: "yulduz", name: "Yulduz", gender: "female", description: "Natural Uzbek — supports speaking styles." },
+];
+
+export const RU_VOICES: Voice[] = [
+  { id: "alena", name: "Alena", gender: "female", description: "Warm and neutral — the default." },
+  { id: "oksana", name: "Oksana", gender: "female", description: "Clear and composed." },
+  { id: "jane", name: "Jane", gender: "female", description: "Bright and expressive." },
+  { id: "filipp", name: "Filipp", gender: "male", description: "Deep and steady." },
+  { id: "ermil", name: "Ermil", gender: "male", description: "Friendly and measured." },
+  { id: "zahar", name: "Zahar", gender: "male", description: "Confident and direct." },
+];
+
+/** Speaking styles per language (Yandex TTS "role"). */
+export const VOICE_ROLES: Partial<Record<Language, string[]>> = {
+  uz: ["neutral", "strict", "friendly", "whisper"],
+  ru: ["neutral"],
+};
+
+export const DEFAULT_VOICE_ROLE = "neutral";
+
+/** Default voice (Vapi native, English). */
 export const DEFAULT_VOICE_ID = "Elliot";
+
+export function defaultVoiceForLanguage(language: Language): string {
+  if (language === "uz") return UZ_VOICES[0].id;
+  if (language === "ru") return RU_VOICES[0].id;
+  return DEFAULT_VOICE_ID;
+}
 
 /** The single low-latency model every agent runs on (not user-selectable). */
 export const FIXED_MODEL = "gpt-4o-mini-cluster";
@@ -150,6 +182,7 @@ export const baseAgent = (
   status: "draft",
   tags: [],
   voiceId: DEFAULT_VOICE_ID,
+  voiceRole: DEFAULT_VOICE_ROLE,
   speed: 1.0,
   model: FIXED_MODEL,
   systemPrompt:
@@ -193,14 +226,17 @@ export function makeAgentFromTemplate(
   });
 }
 
-// Vapi native voices are language-agnostic — the same voice speaks whatever the
-// model outputs — so the catalog is shown for every language.
-export function getVoicesForLanguage(_language: Language) {
+// English uses Vapi native voices; Uzbek/Russian use the Yandex bridge catalog.
+export function getVoicesForLanguage(language: Language) {
+  if (language === "uz") return UZ_VOICES;
+  if (language === "ru") return RU_VOICES;
   return VOICES;
 }
 
 export function getVoiceById(id: string) {
-  return VOICES.find((v) => v.id === id) ?? null;
+  return (
+    [...VOICES, ...UZ_VOICES, ...RU_VOICES].find((v) => v.id === id) ?? null
+  );
 }
 
 export const LANGUAGE_LABELS: Record<Language, { label: string; flag: string }> = {
