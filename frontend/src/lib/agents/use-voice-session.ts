@@ -17,8 +17,13 @@ export type VoiceSessionState = {
   busy: boolean;
 };
 
-function isServerAgentId(id: string | undefined): boolean {
-  return typeof id === "string" && /^ag_\d+$/.test(id);
+/** Accepts org agents (`ag_*`) and squads (`sq_*`). */
+function isServerVoiceId(id: string | undefined): boolean {
+  return typeof id === "string" && /^(ag|sq)_\d+$/.test(id);
+}
+
+function isSquadId(id: string): boolean {
+  return /^sq_\d+$/.test(id);
 }
 
 function isBenignDailyTeardown(e: unknown): boolean {
@@ -45,8 +50,11 @@ async function safeStopVapi(client: Vapi | null): Promise<void> {
 }
 
 async function fetchWebCallConfig(
-  agentRecordId: string,
-): Promise<{ publicKey: string; assistantId: string } | { error: string }> {
+  recordId: string,
+): Promise<
+  | { publicKey: string; assistantId: string; kind: "agent" | "squad" }
+  | { error: string }
+> {
   const fromEnv = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY?.trim() ?? "";
   if (!hasBackendApi()) {
     return {
@@ -54,14 +62,16 @@ async function fetchWebCallConfig(
         "Set NEXT_PUBLIC_API_BASE_URL and sign in to use voice from this workspace.",
     };
   }
+  const squad = isSquadId(recordId);
   try {
     const cfg = await apiFetch<{
       publicKey: string;
       assistantId: string | null;
       workflowId: string | null;
+      squadId?: string | null;
     }>("/api/v1/calls/web-config/", {
       method: "POST",
-      json: { agent_id: agentRecordId },
+      json: squad ? { squad_id: recordId } : { agent_id: recordId },
     });
     const pk = (cfg.publicKey || fromEnv).trim();
     if (!pk) {
@@ -70,14 +80,15 @@ async function fetchWebCallConfig(
           "Voice is not configured on the server. Set VAPI_PUBLIC_KEY in backend/.env.",
       };
     }
-    const aid = (cfg.assistantId ?? "").trim();
-    if (!aid) {
+    const vid = ((squad ? cfg.squadId : cfg.assistantId) ?? "").trim();
+    if (!vid) {
       return {
-        error:
-          "This agent is not linked to voice yet. Save the agent or use Re-sync voice settings.",
+        error: squad
+          ? "This squad is not synced to voice yet. Save it first."
+          : "This agent is not linked to voice yet. Save the agent or use Re-sync voice settings.",
       };
     }
-    return { publicKey: pk, assistantId: aid };
+    return { publicKey: pk, assistantId: vid, kind: squad ? "squad" : "agent" };
   } catch (e) {
     return {
       error:
@@ -102,7 +113,8 @@ type ConfigCache = {
 };
 
 /**
- * Prefetch web-config for an org agent (`ag_*`) and start/stop Vapi Web SDK calls.
+ * Prefetch web-config for an org agent (`ag_*`) or squad (`sq_*`) and
+ * start/stop Vapi Web SDK calls.
  */
 export function useVoiceSession(
   agentRecordId: string | undefined,
@@ -116,7 +128,7 @@ export function useVoiceSession(
 } {
   const enabled = options.enabled ?? true;
   const id = (agentRecordId ?? "").trim();
-  const canLoad = enabled && isServerAgentId(id);
+  const canLoad = enabled && isServerVoiceId(id);
 
   const [configCache, setConfigCache] = React.useState<ConfigCache | null>(null);
   const [active, setActive] = React.useState(false);
@@ -203,8 +215,8 @@ export function useVoiceSession(
     if (!window.isSecureContext) {
       return "Browser call requires HTTPS (or localhost) to access microphone.";
     }
-    if (!isServerAgentId(id)) {
-      return "This agent must be saved on the server before starting a call.";
+    if (!isServerVoiceId(id)) {
+      return "Save this on the server before starting a call.";
     }
     if (
       resolvedStatus !== "ready" ||
@@ -243,7 +255,12 @@ export function useVoiceSession(
     });
 
     try {
-      await vapi.start(resolvedAssistantId);
+      if (isSquadId(id)) {
+        // Squad web call: 3rd positional arg of vapi.start is the squad id.
+        await vapi.start(undefined, undefined, resolvedAssistantId);
+      } else {
+        await vapi.start(resolvedAssistantId);
+      }
       return null;
     } catch (e) {
       vapiRef.current = null;

@@ -6,4 +6,6 @@ export const queryKeys = {
   callLog: (id: string) => ["callLog", id] as const,
   phoneNumbers: () => ["phoneNumbers"] as const,
   phoneNumber: (id: string) => ["phoneNumber", id] as const,
+  squads: () => ["squads"] as const,
+  squad: (id: string) => ["squad", id] as const,
 };
