@@ -133,6 +133,47 @@ class PhoneNumber(TimeStampedModel):
         return self.number or self.vapi_phone_number_id
 
 
+class Campaign(TimeStampedModel):
+    """Outbound batch call (Vapi Campaigns API).
+
+    Static config is mirrored; live status + call counters are always read
+    from Vapi (GET /campaign/{id}), never persisted as truth.
+    """
+
+    class Target(models.TextChoices):
+        AGENT = "agent", "Agent"
+        SQUAD = "squad", "Squad"
+
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="campaigns",
+    )
+    name = models.CharField(max_length=255)
+    target_kind = models.CharField(max_length=16, choices=Target.choices)
+    # External id of the target (ag_<pk> or sq_<pk>) for re-linking in the UI.
+    target_ext_id = models.CharField(max_length=32, blank=True, default="")
+    vapi_target_id = models.CharField(max_length=64, blank=True, default="")
+    phone_number = models.ForeignKey(
+        "PhoneNumber",
+        on_delete=models.PROTECT,
+        related_name="campaigns",
+    )
+    vapi_phone_number_id = models.CharField(max_length=64, blank=True, default="")
+    customers = models.JSONField(default=list, blank=True)
+    schedule_earliest_at = models.DateTimeField(null=True, blank=True)
+    # Snapshot only; the detail view polls Vapi for live status/counters.
+    status = models.CharField(max_length=32, blank=True, default="scheduled")
+    vapi_campaign_id = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["organization", "created_at"])]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class CallDirection(models.TextChoices):
     WEB = "web", "Web"
     OUTBOUND = "outbound", "Outbound PSTN"

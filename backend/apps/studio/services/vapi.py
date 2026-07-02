@@ -111,6 +111,22 @@ def delete_squad(squad_id: str) -> None:
     vapi_request("DELETE", f"/squad/{squad_id}")
 
 
+def create_campaign(payload: dict[str, Any]) -> dict[str, Any]:
+    return vapi_request("POST", "/campaign", payload)  # type: ignore[return-value]
+
+
+def get_campaign(campaign_id: str) -> dict[str, Any]:
+    return vapi_request("GET", f"/campaign/{campaign_id}")  # type: ignore[return-value]
+
+
+def update_campaign(campaign_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return vapi_request("PATCH", f"/campaign/{campaign_id}", payload)  # type: ignore[return-value]
+
+
+def delete_campaign(campaign_id: str) -> None:
+    vapi_request("DELETE", f"/campaign/{campaign_id}")
+
+
 def create_phone_call(payload: dict[str, Any]) -> dict[str, Any]:
     """
     Outbound PSTN — POST /call (Vapi).

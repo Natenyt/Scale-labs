@@ -15,14 +15,14 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.studio.mixins import ExternalIdLookupMixin
-from apps.studio.models import Agent, Call, CallEvent, CallDirection, CallStatus, NotionIntegration, PhoneNumber, Squad, Workflow
+from apps.studio.models import Agent, Call, Campaign, CallEvent, CallDirection, CallStatus, NotionIntegration, PhoneNumber, Squad, Workflow
 from apps.studio.permissions import HasActiveOrganization
 from apps.studio.serializers import (
     AgentSerializer,
@@ -30,6 +30,8 @@ from apps.studio.serializers import (
     CallSerializer,
     NotionIntegrationSerializer,
     OutboundCallSerializer,
+    CampaignCreateSerializer,
+    CampaignSerializer,
     PhoneNumberCreateSerializer,
     PhoneNumberUpdateSerializer,
     SquadSerializer,
@@ -39,6 +41,10 @@ from apps.studio.serializers import (
 )
 from apps.studio.services import vapi as vapi_service
 from apps.studio.services.agent_assistant import build_vapi_assistant_payload
+from apps.studio.services.campaign_builder import (
+    build_vapi_campaign,
+    validate_customers,
+)
 from apps.studio.services.squad_builder import (
     SquadGraphError,
     build_vapi_squad,
@@ -325,6 +331,142 @@ class SquadViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
             except vapi_service.VapiApiError:
                 pass  # best-effort remote cleanup; always delete the row
         super().perform_destroy(instance)
+
+
+class CampaignViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
+    """Outbound batch campaigns (Vapi Campaigns API).
+
+    Create/list/detail/delete plus /stop/ (the only legal status PATCH) and
+    /live/ (fresh status + counters from Vapi). No generic edit — Vapi rejects
+    everything but {status: "ended"}.
+    """
+
+    serializer_class = CampaignSerializer
+    permission_classes = [IsAuthenticated, HasActiveOrganization]
+    ext_prefix = "cp"
+    http_method_names = ["get", "post", "delete", "head", "options"]
+
+    def get_queryset(self):
+        return Campaign.objects.filter(organization=self.request.organization)
+
+    def create(self, request: Request, *args, **kwargs):
+        if not (settings.VAPI_API_KEY or "").strip():
+            return Response(
+                {"detail": "VAPI_API_KEY is not configured on the server."},
+                status=500,
+            )
+        ser = CampaignCreateSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        org = request.organization
+        data = ser.validated_data
+
+        # Twilio-provider phone number owned by this org (Vapi numbers can't
+        # run outbound campaigns).
+        pn_pk = _parse_ext_id("pn", data["phone_number_id"])
+        phone = (
+            PhoneNumber.objects.filter(organization=org, pk=pn_pk).first()
+            if pn_pk is not None
+            else None
+        )
+        if not phone:
+            return Response({"phone_number_id": "Pick one of your phone numbers."}, status=400)
+        if phone.provider != "twilio":
+            return Response(
+                {"phone_number_id": "Outbound campaigns require an imported Twilio number."},
+                status=400,
+            )
+
+        # Resolve the target to a Vapi id under org ownership.
+        try:
+            if data["target_kind"] == "agent":
+                vapi_target = resolve_vapi_assistant_id(org, agent_id=data["target_id"])
+            else:
+                vapi_target = resolve_vapi_squad_id(org, squad_id=data["target_id"])
+        except (ValidationError, PermissionDenied) as e:
+            return Response({"target_id": str(getattr(e, "detail", e))}, status=400)
+
+        customers, invalid = validate_customers(data.get("customers") or [])
+        if invalid:
+            preview = ", ".join(invalid[:3]) + ("…" if len(invalid) > 3 else "")
+            return Response({"customers": f"Invalid E.164 number(s): {preview}"}, status=400)
+        if not customers:
+            return Response({"customers": "Add at least one valid E.164 recipient."}, status=400)
+
+        earliest = data.get("schedule_earliest_at")
+        payload = build_vapi_campaign(
+            name=data["name"].strip(),
+            vapi_phone_number_id=phone.vapi_phone_number_id,
+            assistant_id=vapi_target if data["target_kind"] == "agent" else None,
+            squad_id=vapi_target if data["target_kind"] == "squad" else None,
+            customers=customers,
+            schedule_earliest_at=earliest.isoformat() if earliest else None,
+        )
+        try:
+            res = vapi_service.create_campaign(payload)
+        except vapi_service.VapiApiError as e:
+            return Response({"vapi": e.body}, status=e.status)
+        except RuntimeError as e:
+            return Response({"detail": str(e)}, status=500)
+
+        campaign = Campaign.objects.create(
+            organization=org,
+            name=data["name"].strip(),
+            target_kind=data["target_kind"],
+            target_ext_id=data["target_id"],
+            vapi_target_id=vapi_target,
+            phone_number=phone,
+            vapi_phone_number_id=phone.vapi_phone_number_id,
+            customers=customers,
+            schedule_earliest_at=earliest,
+            status=str(res.get("status") or "scheduled"),
+            vapi_campaign_id=str(res.get("id") or ""),
+        )
+        return Response(CampaignSerializer(campaign).data, status=201)
+
+    def perform_destroy(self, instance: Campaign) -> None:
+        vid = (instance.vapi_campaign_id or "").strip()
+        if vid and (settings.VAPI_API_KEY or "").strip():
+            try:
+                vapi_service.delete_campaign(vid)
+            except vapi_service.VapiApiError:
+                pass  # best-effort remote cleanup
+        super().perform_destroy(instance)
+
+    @action(detail=True, methods=["post"], url_path="stop")
+    def stop(self, request: Request, pk=None):
+        campaign = self.get_object()
+        vid = (campaign.vapi_campaign_id or "").strip()
+        if vid:
+            try:
+                vapi_service.update_campaign(vid, {"status": "ended"})
+            except vapi_service.VapiApiError as e:
+                return Response({"vapi": e.body}, status=e.status)
+        campaign.status = "ended"
+        campaign.save(update_fields=["status", "updated_at"])
+        return Response(CampaignSerializer(campaign).data)
+
+    @action(detail=True, methods=["get"], url_path="live")
+    def live(self, request: Request, pk=None):
+        campaign = self.get_object()
+        vid = (campaign.vapi_campaign_id or "").strip()
+        if not vid:
+            return Response({"status": campaign.status, "counters": {}})
+        try:
+            c = vapi_service.get_campaign(vid)
+        except vapi_service.VapiApiError as e:
+            return Response({"vapi": e.body}, status=e.status)
+        return Response(
+            {
+                "status": c.get("status") or campaign.status,
+                "counters": {
+                    "scheduled": c.get("callsCounterScheduled") or 0,
+                    "queued": c.get("callsCounterQueued") or 0,
+                    "inProgress": c.get("callsCounterInProgress") or 0,
+                    "voicemail": c.get("callsCounterEndedVoicemail") or 0,
+                    "ended": c.get("callsCounterEnded") or 0,
+                },
+            }
+        )
 
 
 class NotionIntegrationViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
@@ -842,6 +984,13 @@ class PhoneNumberDetailView(APIView):
             return Response(
                 {"error": "Phone number is not available in your organization."},
                 status=403,
+            )
+
+        # Friendly guard: a campaign still references this number (PROTECT FK).
+        if Campaign.objects.filter(phone_number__vapi_phone_number_id=pid).exists():
+            return Response(
+                {"error": "This number is used by a campaign. Delete the campaign first."},
+                status=409,
             )
 
         try:

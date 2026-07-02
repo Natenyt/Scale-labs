@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from apps.studio.models import Agent, Call, CallEvent, NotionIntegration, Squad, Workflow
+from apps.studio.models import Agent, Call, Campaign, CallEvent, NotionIntegration, PhoneNumber, Squad, Workflow
 from apps.studio.services.crypto import decrypt_str, encrypt_str
 
 
@@ -98,6 +98,52 @@ class SquadSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["organization"] = self.context["request"].organization
         return super().create(validated_data)
+
+
+class CampaignSerializer(serializers.ModelSerializer):
+    """Read representation of a campaign row (external ids)."""
+
+    id = serializers.CharField(read_only=True)
+    phone_number_id = serializers.SerializerMethodField()
+    recipient_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Campaign
+        fields = (
+            "id",
+            "name",
+            "target_kind",
+            "target_ext_id",
+            "phone_number_id",
+            "customers",
+            "recipient_count",
+            "schedule_earliest_at",
+            "status",
+            "vapi_campaign_id",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["id"] = _ext_id("cp", instance.pk)
+        return data
+
+    def get_phone_number_id(self, obj) -> str:
+        return _ext_id("pn", obj.phone_number_id) if obj.phone_number_id else ""
+
+    def get_recipient_count(self, obj) -> int:
+        return len(obj.customers or [])
+
+
+class CampaignCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+    phone_number_id = serializers.CharField(max_length=32)
+    target_kind = serializers.ChoiceField(choices=["agent", "squad"])
+    target_id = serializers.CharField(max_length=32)
+    customers = serializers.ListField(child=serializers.DictField(), required=False, default=list)
+    schedule_earliest_at = serializers.DateTimeField(required=False, allow_null=True)
 
 
 class NotionIntegrationSerializer(serializers.ModelSerializer):
