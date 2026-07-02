@@ -6,7 +6,19 @@ Matches Vapi dashboard “Blank template” shape (minus read-only fields like i
 
 from __future__ import annotations
 
+import re
 from typing import Any
+from urllib.parse import quote
+
+from django.conf import settings
+
+from apps.studio.services.voice_catalog import (
+    DEFAULT_VOICE,
+    VAPI_VOICES,
+    YANDEX_LANGUAGES,
+    is_bridge_language,
+    resolve_bridge_voice,
+)
 
 _BLANK_TEMPLATE_SYSTEM = (
     "This is a blank template with minimal defaults, you can change the model, "
@@ -34,16 +46,6 @@ def _openai_model_id(scale_model: str) -> str:
     return "gpt-4.1"
 
 
-# Vapi's NATIVE voices (provider "vapi"). These run inside Vapi's pipeline with
-# no external TTS hop, so they have the lowest latency — the whole point of
-# dropping ElevenLabs, whose eleven_multilingual_v2 made calls lag and stutter.
-# Keep this set in sync with frontend VOICES (types.ts).
-VAPI_VOICES: frozenset[str] = frozenset(
-    {"Elliot", "Clara", "Savannah", "Kai", "Rohan", "Emma"}
-)
-DEFAULT_VOICE = "Elliot"
-
-
 # Single low-latency model every agent runs on. The model picker was removed
 # from the UI — users care about latency, not the model — so this is fixed
 # server-side and config.model is ignored.
@@ -65,8 +67,46 @@ def _language_code(config: dict[str, Any]) -> str:
     return "en"
 
 
-def _transcriber_for_language(lang: str) -> dict[str, Any]:
-    """Low-latency Deepgram STT per language."""
+def _bridge_configured() -> bool:
+    return bool(settings.BRIDGE_BASE_URL and settings.BRIDGE_SECRET)
+
+
+def _bridge_urls(lang: str, voice: str, role: str) -> tuple[str, str]:
+    """Build the bridge custom-voice / custom-transcriber URLs.
+
+    Byte-identical port of the proven ScaleOps construction (scale-labs-ops
+    src/lib/agents/config.ts): single trailing slash stripped, http->ws prefix
+    swap, encodeURIComponent params, secret duplicated in the WS query string
+    because the WebSocket handshake cannot read server.secret.
+    """
+    http_base = re.sub(r"/$", "", settings.BRIDGE_BASE_URL or "")
+    wss_base = re.sub(r"^http", "ws", http_base)
+    secret = settings.BRIDGE_SECRET or ""
+    stt_lang = YANDEX_LANGUAGES[lang]["stt_lang"]
+
+    voice_url = f"{http_base}/custom-voice?voice={quote(voice, safe='')}"
+    if role:
+        voice_url += f"&role={quote(role, safe='')}"
+    transcriber_url = (
+        f"{wss_base}/custom-transcriber?lang={quote(stt_lang, safe='')}"
+        f"&secret={quote(secret, safe='')}"
+    )
+    return voice_url, transcriber_url
+
+
+def _transcriber_for_language(lang: str, config: dict[str, Any]) -> dict[str, Any]:
+    """STT per language: Deepgram for English, the Yandex bridge for uz/ru."""
+    if is_bridge_language(lang) and _bridge_configured():
+        voice, role = resolve_bridge_voice(
+            lang,
+            str(config.get("voiceId") or "").strip(),
+            str(config.get("voiceRole") or "").strip(),
+        )
+        _, transcriber_url = _bridge_urls(lang, voice, role)
+        return {
+            "provider": "custom-transcriber",
+            "server": {"url": transcriber_url, "secret": settings.BRIDGE_SECRET},
+        }
     if lang == "ru":
         return {"provider": "deepgram", "model": "nova-2", "language": "ru"}
     if lang == "uz":
@@ -74,13 +114,43 @@ def _transcriber_for_language(lang: str) -> dict[str, Any]:
     return {"provider": "deepgram", "model": "nova-3", "language": "en"}
 
 
-def _voice_block(config: dict[str, Any]) -> dict[str, Any]:
-    """Resolve the agent's voice to a Vapi native voice (lowest TTS latency)."""
+def _voice_block(lang: str, config: dict[str, Any]) -> dict[str, Any]:
+    """Resolve the agent's voice.
+
+    English -> Vapi native voice (lowest TTS latency). Uzbek/Russian -> the
+    Yandex SpeechKit bridge via custom-voice (the only real uz option; ru gets
+    the SpeechKit voice set). Falls back to Deepgram/native only when the
+    bridge env is not configured (local dev without the bridge).
+    """
+    if is_bridge_language(lang) and _bridge_configured():
+        voice, role = resolve_bridge_voice(
+            lang,
+            str(config.get("voiceId") or "").strip(),
+            str(config.get("voiceRole") or "").strip(),
+        )
+        voice_url, _ = _bridge_urls(lang, voice, role)
+        return {
+            "provider": "custom-voice",
+            "server": {"url": voice_url, "secret": settings.BRIDGE_SECRET},
+        }
     voice_id = str(config.get("voiceId") or "").strip()
     if voice_id not in VAPI_VOICES:
         # Old ElevenLabs `v_*` ids and anything unknown fall back to the default.
         voice_id = DEFAULT_VOICE
     return {"provider": "vapi", "voiceId": voice_id, "speed": _voice_speed(config)}
+
+
+# Yandex STT emits unpunctuated transcripts, so onNoPunctuationSeconds is the
+# endpointing lever. These exact values were tuned on live uz calls in ScaleOps
+# (~1.3s turns) — do NOT "clean up" the magic numbers.
+_BRIDGE_START_SPEAKING_PLAN: dict[str, Any] = {
+    "waitSeconds": 0.2,
+    "transcriptionEndpointingPlan": {
+        "onPunctuationSeconds": 0.05,
+        "onNoPunctuationSeconds": 0.6,
+        "onNumberSeconds": 0.2,
+    },
+}
 
 
 def _e164(raw: str) -> str:
@@ -155,14 +225,19 @@ def build_vapi_assistant_payload(name: str, config: dict[str, Any]) -> dict[str,
         "endCallMessage": end_call,
         "maxDurationSeconds": max_seconds,
         "model": model_block,
-        "voice": _voice_block(config),
-        "transcriber": _transcriber_for_language(lang),
+        "voice": _voice_block(lang, config),
+        "transcriber": _transcriber_for_language(lang, config),
         "analysisPlan": {
             "summaryPlan": {"enabled": False},
             "successEvaluationPlan": {"enabled": False},
         },
         "backgroundDenoisingEnabled": True,
     }
+
+    # Bridge languages need the tuned endpointing plan (unpunctuated Yandex STT).
+    # English agents keep Vapi defaults — payload unchanged vs. pre-bridge builds.
+    if is_bridge_language(lang) and _bridge_configured():
+        payload["startSpeakingPlan"] = _BRIDGE_START_SPEAKING_PLAN
 
     # Voicemail: when detection is on and the agent should leave a message, send
     # the message (TTS); on "hang up" omit it so Vapi ends the call on voicemail.

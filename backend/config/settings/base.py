@@ -25,6 +25,8 @@ env = environ.Env(
     DEV_PUBLIC_ORIGIN=(str, ""),
     VAPI_SHARED_SECRET=(str, ""),
     FIELD_ENCRYPTION_KEY=(str, ""),
+    BRIDGE_BASE_URL=(str, ""),
+    BRIDGE_SECRET=(str, ""),
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -188,3 +190,8 @@ VAPI_WEBHOOK_BASE = resolve_vapi_webhook_base(
 )
 VAPI_SHARED_SECRET = env("VAPI_SHARED_SECRET", default="")
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="")
+
+# Yandex SpeechKit voice bridge (scale-labs-core on Railway) — used for Uzbek /
+# Russian agents via Vapi custom-voice / custom-transcriber.
+BRIDGE_BASE_URL = env("BRIDGE_BASE_URL", default="")
+BRIDGE_SECRET = env("BRIDGE_SECRET", default="")
