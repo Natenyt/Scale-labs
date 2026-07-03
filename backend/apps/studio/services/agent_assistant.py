@@ -259,6 +259,17 @@ def build_vapi_assistant_payload(name: str, config: dict[str, Any]) -> dict[str,
         "backgroundDenoisingEnabled": True,
     }
 
+    # When the agent first speaks. Default (assistant-speaks-first) greets on
+    # answer; "assistant-waits-for-user" stays silent until it hears the person
+    # — the fix for calling reception/PBX numbers that pick up before a human.
+    mode = str(config.get("firstMessageMode") or "").strip()
+    if mode in (
+        "assistant-speaks-first",
+        "assistant-waits-for-user",
+        "assistant-speaks-first-with-model-generated-message",
+    ):
+        payload["firstMessageMode"] = mode
+
     # Bridge languages need the tuned endpointing plan (unpunctuated Yandex STT).
     # English agents keep Vapi defaults — payload unchanged vs. pre-bridge builds.
     if is_bridge_language(lang) and _bridge_configured():

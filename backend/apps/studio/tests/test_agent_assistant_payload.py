@@ -127,6 +127,26 @@ def test_trailing_slash_stripped_once():
     assert payload["voice"]["server"]["url"].startswith(f"{BRIDGE_BASE}/custom-voice")
 
 
+@bridge_env
+def test_first_message_mode_wait_for_user_is_emitted():
+    payload = build_vapi_assistant_payload(
+        "Reception dialer", {"firstMessageMode": "assistant-waits-for-user"}
+    )
+    assert payload["firstMessageMode"] == "assistant-waits-for-user"
+
+
+@bridge_env
+def test_first_message_mode_omitted_when_unset():
+    payload = build_vapi_assistant_payload("A", {})
+    assert "firstMessageMode" not in payload
+
+
+@bridge_env
+def test_first_message_mode_invalid_value_ignored():
+    payload = build_vapi_assistant_payload("A", {"firstMessageMode": "bogus"})
+    assert "firstMessageMode" not in payload
+
+
 @no_bridge_env
 def test_bridge_unconfigured_falls_back_to_legacy_deepgram():
     payload = build_vapi_assistant_payload("A", {"language": "uz", "voiceId": "yulduz"})

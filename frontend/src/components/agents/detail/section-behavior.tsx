@@ -11,6 +11,13 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { type Agent } from "@/lib/agents/types";
@@ -99,6 +106,31 @@ export function SectionBehavior({ agent, onChange }: Props) {
           rows={3}
           onChange={(e) => onChange({ firstMessage: e.target.value })}
         />
+      </FieldRow>
+
+      <FieldRow
+        label="Greeting behavior"
+        description="When the agent speaks its first message. Choose “Wait for the person” when calling reception or PBX numbers that answer before a human — the agent stays silent until it hears someone speak, so the greeting isn’t wasted."
+        htmlFor="agent-behavior-mode"
+      >
+        <Select
+          value={agent.firstMessageMode}
+          onValueChange={(v) =>
+            onChange({ firstMessageMode: v as Agent["firstMessageMode"] })
+          }
+        >
+          <SelectTrigger id="agent-behavior-mode">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="assistant-speaks-first">
+              Speak first (default)
+            </SelectItem>
+            <SelectItem value="assistant-waits-for-user">
+              Wait for the person to speak
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </FieldRow>
 
       <FieldRow

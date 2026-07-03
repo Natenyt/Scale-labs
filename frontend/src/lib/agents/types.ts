@@ -22,6 +22,11 @@ export type TransferDestination = {
   mode: TransferMode;
 };
 
+/** When the assistant first speaks (Vapi `firstMessageMode`). */
+export type FirstMessageMode =
+  | "assistant-speaks-first"
+  | "assistant-waits-for-user";
+
 export type Agent = {
   id: string;
   name: string;
@@ -37,6 +42,10 @@ export type Agent = {
   model: string;
   systemPrompt: string;
   firstMessage: string;
+  /** When the agent first speaks. "assistant-waits-for-user" keeps it silent
+   * until it hears the person answer — the fix for reception/PBX numbers that
+   * pick up before a human is on the line. */
+  firstMessageMode: FirstMessageMode;
   knowledgeFiles: { id: string; name: string; sizeKb: number }[];
   integrationId: string | null;
   lookupField: string | null;
@@ -188,6 +197,7 @@ export const baseAgent = (
   systemPrompt:
     "You are a helpful, concise voice assistant. Speak naturally and keep responses brief.",
   firstMessage: "Hello, how can I help you today?",
+  firstMessageMode: "assistant-speaks-first",
   knowledgeFiles: [],
   integrationId: null,
   lookupField: null,
