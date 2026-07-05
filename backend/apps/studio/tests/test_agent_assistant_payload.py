@@ -115,6 +115,25 @@ def test_ru_invalid_voice_falls_back_to_alena():
     assert "voice=alena" in payload["voice"]["server"]["url"]
 
 
+# --- Barge-in guard (stopSpeakingPlan) ----------------------------------------
+
+
+@bridge_env
+def test_uz_agent_has_barge_in_stop_speaking_plan():
+    payload = build_vapi_assistant_payload("A", {"language": "uz"})
+    assert payload["stopSpeakingPlan"] == {
+        "numWords": 2,
+        "voiceSeconds": 0.3,
+        "backoffSeconds": 1.5,
+    }
+
+
+@bridge_env
+def test_en_agent_has_no_stop_speaking_plan():
+    payload = build_vapi_assistant_payload("A", {"language": "en"})
+    assert "stopSpeakingPlan" not in payload
+
+
 # --- Trailing slash + missing bridge env ---------------------------------------
 
 

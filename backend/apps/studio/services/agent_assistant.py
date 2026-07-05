@@ -152,6 +152,17 @@ _BRIDGE_START_SPEAKING_PLAN: dict[str, Any] = {
     },
 }
 
+# Barge-in guard for the Yandex custom transcriber. Yandex STT finalizes an
+# utterance slightly after its last partial; without this, a late/echoed final
+# landing during the assistant's speech reads to Vapi as a barge-in and makes it
+# RESTART and re-speak the whole turn (the "agent repeats itself" bug). Requiring
+# >=2 transcribed words before an interruption filters those stray finals.
+_BRIDGE_STOP_SPEAKING_PLAN: dict[str, Any] = {
+    "numWords": 2,
+    "voiceSeconds": 0.3,
+    "backoffSeconds": 1.5,
+}
+
 
 def resolve_language_voice(
     language: str, voice_id: str = "", voice_role: str = ""
@@ -270,10 +281,12 @@ def build_vapi_assistant_payload(name: str, config: dict[str, Any]) -> dict[str,
     ):
         payload["firstMessageMode"] = mode
 
-    # Bridge languages need the tuned endpointing plan (unpunctuated Yandex STT).
+    # Bridge languages need the tuned endpointing plan (unpunctuated Yandex STT)
+    # and the barge-in guard (stops a late Yandex final from re-speaking the turn).
     # English agents keep Vapi defaults — payload unchanged vs. pre-bridge builds.
     if is_bridge_language(lang) and _bridge_configured():
         payload["startSpeakingPlan"] = _BRIDGE_START_SPEAKING_PLAN
+        payload["stopSpeakingPlan"] = _BRIDGE_STOP_SPEAKING_PLAN
 
     # Voicemail: when detection is on and the agent should leave a message, send
     # the message (TTS); on "hang up" omit it so Vapi ends the call on voicemail.
