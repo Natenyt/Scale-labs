@@ -71,7 +71,21 @@ def _bridge_configured() -> bool:
     return bool(settings.BRIDGE_BASE_URL and settings.BRIDGE_SECRET)
 
 
-def _bridge_urls(lang: str, voice: str, role: str) -> tuple[str, str]:
+def _bridge_speed(config: dict[str, Any]) -> float | None:
+    """Yandex TTS speed for a bridge voice. Returns None at the natural 1.0 pace
+    (keeps the URL — and existing agents — unchanged); otherwise a clamped rate.
+    Yandex default reads slow for Uzbek, so agents can raise this from the UI."""
+    try:
+        s = float(config.get("speed"))
+    except (TypeError, ValueError):
+        return None
+    s = max(0.5, min(2.0, round(s, 2)))
+    return s if abs(s - 1.0) > 1e-9 else None
+
+
+def _bridge_urls(
+    lang: str, voice: str, role: str, speed: float | None = None
+) -> tuple[str, str]:
     """Build the bridge custom-voice / custom-transcriber URLs.
 
     Byte-identical port of the proven ScaleOps construction (scale-labs-ops
@@ -87,6 +101,8 @@ def _bridge_urls(lang: str, voice: str, role: str) -> tuple[str, str]:
     voice_url = f"{http_base}/custom-voice?voice={quote(voice, safe='')}"
     if role:
         voice_url += f"&role={quote(role, safe='')}"
+    if speed is not None:
+        voice_url += f"&speed={speed}"
     transcriber_url = (
         f"{wss_base}/custom-transcriber?lang={quote(stt_lang, safe='')}"
         f"&secret={quote(secret, safe='')}"
@@ -128,7 +144,7 @@ def _voice_block(lang: str, config: dict[str, Any]) -> dict[str, Any]:
             str(config.get("voiceId") or "").strip(),
             str(config.get("voiceRole") or "").strip(),
         )
-        voice_url, _ = _bridge_urls(lang, voice, role)
+        voice_url, _ = _bridge_urls(lang, voice, role, _bridge_speed(config))
         return {
             "provider": "custom-voice",
             "server": {"url": voice_url, "secret": settings.BRIDGE_SECRET},

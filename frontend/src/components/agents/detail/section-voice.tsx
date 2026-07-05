@@ -26,6 +26,10 @@ export function SectionVoice({ agent, onChange }: Props) {
     [agent.language],
   );
   const roles = VOICE_ROLES[agent.language] ?? [];
+  // Bridge (Yandex) voices read slow at 1.0, so allow a faster range for uz/ru.
+  const isBridge = agent.language === "uz" || agent.language === "ru";
+  const speedMin = isBridge ? 0.8 : 0.7;
+  const speedMax = isBridge ? 2.0 : 1.2;
 
   return (
     <SectionShell
@@ -109,32 +113,31 @@ export function SectionVoice({ agent, onChange }: Props) {
         </div>
       )}
 
-      {agent.language === "en" && (
-        <div className="border-border/50 grid gap-4 border-t pt-5">
-          <div className="flex items-center justify-between">
-            <div className="grid gap-1">
-              <div className="text-sm font-medium">Speech speed</div>
-              <p className="text-muted-foreground text-xs">
-                How fast the agent talks. 1.0× is natural pace.
-              </p>
-            </div>
-            <Badge variant="secondary" className="tabular-nums">
-              {agent.speed.toFixed(2)}×
-            </Badge>
+      <div className="border-border/50 grid gap-4 border-t pt-5">
+        <div className="flex items-center justify-between">
+          <div className="grid gap-1">
+            <div className="text-sm font-medium">Speech speed</div>
+            <p className="text-muted-foreground text-xs">
+              How fast the agent talks. 1.0× is natural pace.
+              {isBridge ? " Nudge it up if Uzbek/Russian sounds slow." : ""}
+            </p>
           </div>
-          <Slider
-            value={[agent.speed]}
-            min={0.7}
-            max={1.2}
-            step={0.05}
-            onValueChange={(v) => onChange({ speed: Number(v[0].toFixed(2)) })}
-          />
-          <div className="text-muted-foreground flex justify-between text-[11px]">
-            <span>Slower 0.7×</span>
-            <span>Faster 1.2×</span>
-          </div>
+          <Badge variant="secondary" className="tabular-nums">
+            {agent.speed.toFixed(2)}×
+          </Badge>
         </div>
-      )}
+        <Slider
+          value={[Math.min(speedMax, Math.max(speedMin, agent.speed))]}
+          min={speedMin}
+          max={speedMax}
+          step={0.05}
+          onValueChange={(v) => onChange({ speed: Number(v[0].toFixed(2)) })}
+        />
+        <div className="text-muted-foreground flex justify-between text-[11px]">
+          <span>Slower {speedMin.toFixed(1)}×</span>
+          <span>Faster {speedMax.toFixed(1)}×</span>
+        </div>
+      </div>
     </SectionShell>
   );
 }

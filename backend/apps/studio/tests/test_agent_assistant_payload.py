@@ -134,6 +134,29 @@ def test_en_agent_has_no_stop_speaking_plan():
     assert "stopSpeakingPlan" not in payload
 
 
+# --- Speech speed (Yandex bridge) ---------------------------------------------
+
+
+@bridge_env
+def test_uz_speed_appended_to_voice_url():
+    payload = build_vapi_assistant_payload("A", {"language": "uz", "speed": 1.5})
+    assert payload["voice"]["server"]["url"].endswith(
+        "/custom-voice?voice=yulduz&role=neutral&speed=1.5"
+    )
+
+
+@bridge_env
+def test_uz_default_speed_omits_param_url_unchanged():
+    payload = build_vapi_assistant_payload("A", {"language": "uz", "speed": 1.0})
+    assert "speed=" not in payload["voice"]["server"]["url"]
+
+
+@bridge_env
+def test_uz_speed_clamped_to_max():
+    payload = build_vapi_assistant_payload("A", {"language": "uz", "speed": 9})
+    assert payload["voice"]["server"]["url"].endswith("&speed=2.0")
+
+
 # --- Trailing slash + missing bridge env ---------------------------------------
 
 
