@@ -173,14 +173,11 @@ def _normalize_role(raw: Any) -> str:
     return "system"
 
 
-def extract_transcript(call: dict[str, Any]) -> list[dict[str, Any]]:
-    art = _artifact(call)
-    messages = art.get("messages")
-    if not isinstance(messages, list):
-        messages = call.get("messages")
+def _transcript_rows(messages: Any) -> list[dict[str, Any]]:
+    """One row per spoken turn. Drops the system prompt (it is not a chat turn
+    and would otherwise render as a bogus 'assistant' bubble)."""
     if not isinstance(messages, list):
         return []
-
     out: list[dict[str, Any]] = []
     for msg in messages:
         if not isinstance(msg, dict):
@@ -189,14 +186,43 @@ def extract_transcript(call: dict[str, Any]) -> list[dict[str, Any]]:
         if not text:
             continue
         role = _normalize_role(msg.get("role") or msg.get("type"))
+        if role == "system":
+            continue
         out.append(
             {
                 "role": role,
                 "text": text,
-                "at": msg.get("time") or msg.get("timestamp") or msg.get("createdAt"),
+                "at": msg.get("time")
+                or msg.get("secondsFromStart")
+                or msg.get("timestamp")
+                or msg.get("createdAt"),
             }
         )
     return out
+
+
+def extract_transcript(call: dict[str, Any]) -> list[dict[str, Any]]:
+    """Build the per-turn transcript, preferring a source that actually carries
+    the assistant's turns. With a customer-only custom transcriber, the raw
+    `messages` may only have system+user, while the LLM conversation
+    (`messagesOpenAIFormatted`) carries the assistant turns."""
+    art = _artifact(call)
+    sources = [
+        art.get("messages"),
+        call.get("messages"),
+        art.get("messagesOpenAIFormatted"),
+        call.get("messagesOpenAIFormatted"),
+    ]
+    fallback: list[dict[str, Any]] = []
+    for src in sources:
+        rows = _transcript_rows(src)
+        if not rows:
+            continue
+        if any(r["role"] == "assistant" for r in rows):
+            return rows  # a source that includes the assistant wins
+        if not fallback:
+            fallback = rows
+    return fallback
 
 
 def _log_message(entry: dict[str, Any]) -> str:

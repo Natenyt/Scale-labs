@@ -1,24 +1,26 @@
 /**
- * Build a clean chat transcript from Vapi client messages.
+ * Build a clean, per-turn chat transcript from Vapi Web SDK client messages.
  *
- * TWO speakers, TWO sources:
+ * Verified against the Vapi client-message schema (docs.vapi.ai + OpenAPI):
  *
- * - CUSTOMER: arrives as `transcript` (role:"user") events — many interim
- *   partials then a final per utterance. We consolidate consecutive same-speaker
- *   utterances into ONE turn line; partials update it in place, finals
- *   accumulate, a speaker change starts a new line.
+ * - "conversation-update" is the AUTHORITATIVE settled history and the ONLY
+ *   place the assistant's text is available with a customer-only custom
+ *   transcriber (our transcriber only transcribes the customer). Its shape:
+ *     { type:"conversation-update",
+ *       messages?: [{ role:"user"|"bot"|"system"|..., message: string, ... }],
+ *       messagesOpenAIFormatted: [{ role:"user"|"assistant"|"system"|"tool", content: string }] }
+ *   NOTE: there is NO top-level "conversation" array; the assistant is role
+ *   "bot" in `messages` (text field "message") and role "assistant" in
+ *   `messagesOpenAIFormatted` (text field "content").
  *
- * - ASSISTANT: comes from `conversation-update` (Vapi's own record of what the
- *   agent said — the clean LLM/first-message text). We deliberately do NOT use
- *   `transcript` (role:"assistant"): with our custom transcriber the bridge only
- *   transcribes the customer, so Vapi emits no assistant transcript, and even
- *   when it does it's a re-transcription of the TTS audio (garbled). The
- *   conversation record is the authoritative, clean assistant text and includes
- *   the opening first-message greeting. New assistant messages are appended by
- *   count so repeated conversation-update snapshots don't duplicate lines.
+ * - "transcript" streams the LIVE in-progress utterance:
+ *     { type:"transcript", role:"user"|"assistant", transcriptType:"partial"|"final", transcript:string }
+ *   Partials SUPERSEDE each other within a turn (replace, never concatenate — that
+ *   was the "one bubble grows forever" bug); a "final" settles the turn.
  *
- * `model-output` (the raw LLM token stream) is ignored — conversation-update
- * already carries the finalized assistant text.
+ * Strategy: rebuild the committed bubble list from conversation-update on every
+ * update (correct order, both speakers, per-turn), and overlay at most one live
+ * bubble from the latest transcript partial for real-time feel.
  */
 
 export type TranscriptChatLine = {
@@ -28,7 +30,7 @@ export type TranscriptChatLine = {
   streamRole?: "assistant" | "user";
   /** True while a partial (interim) utterance is live in this turn. */
   isStreaming?: boolean;
-  /** Accumulated finalized text for this turn (internal bookkeeping). */
+  /** Finalized text for this turn (internal bookkeeping). */
   committed?: string;
 };
 
@@ -53,59 +55,35 @@ function replaceLast(
   return lines.map((line, i) => (i === lines.length - 1 ? next : line));
 }
 
-/** Extract the assistant messages (clean text, in order) from a conversation-update. */
-function assistantMessagesFrom(o: Record<string, unknown>): string[] {
-  const conv = Array.isArray(o.conversation)
-    ? o.conversation
-    : Array.isArray(o.messages)
-      ? o.messages
-      : [];
-  const out: string[] = [];
-  for (const m of conv) {
+type Bubble = { role: "assistant" | "user"; text: string };
+
+function bubblesFrom(
+  arr: unknown,
+  textField: "message" | "content",
+): Bubble[] {
+  if (!Array.isArray(arr)) return [];
+  const out: Bubble[] = [];
+  for (const m of arr) {
     if (!m || typeof m !== "object") continue;
     const mm = m as Record<string, unknown>;
-    const role = mm.role;
-    if (role !== "assistant" && role !== "bot") continue;
-    const content =
-      typeof mm.content === "string"
-        ? mm.content
-        : typeof mm.message === "string"
-          ? mm.message
-          : "";
-    const text = content.trim();
-    if (text) out.push(text);
+    const r = mm.role;
+    const role: "assistant" | "user" | null =
+      r === "user" ? "user" : r === "assistant" || r === "bot" ? "assistant" : null;
+    if (!role) continue; // skip system / tool / tool_calls
+    const c = mm[textField];
+    const text = typeof c === "string" ? c.trim() : "";
+    if (text) out.push({ role, text });
   }
   return out;
 }
 
-function mergeConversationUpdate(
-  lines: TranscriptChatLine[],
-  o: Record<string, unknown>,
-): TranscriptChatLine[] {
-  const assistantMsgs = assistantMessagesFrom(o);
-  if (assistantMsgs.length === 0) return lines;
-
-  const renderedCount = lines.filter(
-    (l) => l.role === "transcript" && l.streamRole === "assistant",
-  ).length;
-
-  let out = lines;
-  // Append only assistant messages we haven't rendered yet (dedupe by count),
-  // so repeated conversation-update snapshots don't re-add earlier turns.
-  for (let i = renderedCount; i < assistantMsgs.length; i++) {
-    out = [
-      ...out,
-      {
-        id: newTranscriptLineId(),
-        role: "transcript",
-        streamRole: "assistant",
-        isStreaming: false,
-        committed: assistantMsgs[i],
-        text: format("assistant", assistantMsgs[i]),
-      },
-    ];
-  }
-  return out;
+/** Ordered user/assistant turns from a conversation-update. Prefer the raw
+ *  `messages` (includes the spoken first-message greeting as role "bot"); fall
+ *  back to `messagesOpenAIFormatted` (role "assistant"). */
+function conversationBubbles(o: Record<string, unknown>): Bubble[] {
+  const raw = bubblesFrom(o.messages, "message");
+  if (raw.length > 0) return raw;
+  return bubblesFrom(o.messagesOpenAIFormatted, "content");
 }
 
 export function mergeVapiClientMessage(
@@ -116,15 +94,38 @@ export function mergeVapiClientMessage(
   const o = raw as Record<string, unknown>;
   const t = typeof o.type === "string" ? o.type : "";
 
-  // Assistant turns: from Vapi's clean conversation record.
-  if (t === "conversation-update") return mergeConversationUpdate(lines, o);
+  if (typeof console !== "undefined" && (t === "conversation-update" || TRANSCRIPT_TYPES.has(t))) {
+    // Lightweight diagnostics (kept intentionally): confirms what Vapi emits.
+    console.debug("[vapi-msg]", t, o.role ?? "", o.transcriptType ?? "");
+  }
 
-  // Customer turns: from transcript events (role:"user"). Assistant transcript
-  // events are ignored — the assistant comes from conversation-update above.
+  // Authoritative, settled history (includes the assistant).
+  if (t === "conversation-update") {
+    const bubbles = conversationBubbles(o);
+    if (bubbles.length === 0) return lines;
+    const system = lines.filter((l) => l.role === "system");
+    const committed: TranscriptChatLine[] = bubbles.map((b, i) => ({
+      id: `cu-${i}-${b.role}`,
+      role: "transcript",
+      streamRole: b.role,
+      isStreaming: false,
+      committed: b.text,
+      text: format(b.role, b.text),
+    }));
+    // Keep a live in-progress partial only if it isn't already committed.
+    const live = lines.find((l) => l.isStreaming);
+    const covered =
+      live &&
+      bubbles.some(
+        (b) => b.role === live.streamRole && b.text === (live.committed || "").trim(),
+      );
+    return [...system, ...committed, ...(live && !covered ? [live] : [])];
+  }
+
+  // Live overlay: one trailing in-progress bubble from transcript partials.
   if (!TRANSCRIPT_TYPES.has(t)) return lines;
-  if (o.role !== "user") return lines;
 
-  const streamRole = "user" as const;
+  const role: "assistant" | "user" = o.role === "assistant" ? "assistant" : "user";
   const body = (
     typeof o.transcript === "string"
       ? o.transcript
@@ -139,41 +140,19 @@ export function mergeVapiClientMessage(
   const isFinal =
     o.transcriptType === "final" || t === "transcript[transcriptType='final']";
 
-  // The current turn is the last line iff it's a transcript from this speaker.
   const last = lines[lines.length - 1];
-  const activeTurn =
-    last && last.role === "transcript" && last.streamRole === streamRole
-      ? last
-      : null;
+  const activeLive =
+    last && last.isStreaming && last.streamRole === role ? last : null;
 
-  if (!isFinal) {
-    // Partial: show committed text + the live interim tail, in place.
-    const committed = activeTurn?.committed ?? "";
-    const text = committed ? `${committed} ${body}` : body;
-    const lineForm: TranscriptChatLine = {
-      id: activeTurn?.id ?? newTranscriptLineId(),
-      role: "transcript",
-      streamRole,
-      isStreaming: true,
-      committed,
-      text: format(streamRole, text),
-    };
-    return activeTurn ? replaceLast(lines, lineForm) : [...lines, lineForm];
-  }
-
-  // Final: commit this utterance into the active turn (or open a new turn).
-  const committed = activeTurn?.committed ?? "";
-  const merged =
-    committed && !committed.endsWith(body)
-      ? `${committed} ${body}`
-      : committed || body;
+  // Partials SUPERSEDE (replace) the live bubble; a final settles it. Either
+  // way the conversation-update will re-commit the turn authoritatively.
   const lineForm: TranscriptChatLine = {
-    id: activeTurn?.id ?? newTranscriptLineId(),
+    id: activeLive?.id ?? newTranscriptLineId(),
     role: "transcript",
-    streamRole,
-    isStreaming: false,
-    committed: merged,
-    text: format(streamRole, merged),
+    streamRole: role,
+    isStreaming: !isFinal,
+    committed: isFinal ? body : "",
+    text: format(role, body),
   };
-  return activeTurn ? replaceLast(lines, lineForm) : [...lines, lineForm];
+  return activeLive ? replaceLast(lines, lineForm) : [...lines, lineForm];
 }
