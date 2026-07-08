@@ -147,7 +147,13 @@ def _voice_block(lang: str, config: dict[str, Any]) -> dict[str, Any]:
         voice_url, _ = _bridge_urls(lang, voice, role, _bridge_speed(config))
         return {
             "provider": "custom-voice",
-            "server": {"url": voice_url, "secret": settings.BRIDGE_SECRET},
+            # Vapi's default request timeout is 20s; the bridge synthesizes the
+            # full utterance before responding, so give long chunks headroom.
+            "server": {
+                "url": voice_url,
+                "secret": settings.BRIDGE_SECRET,
+                "timeoutSeconds": 45,
+            },
         }
     voice_id = str(config.get("voiceId") or "").strip()
     if voice_id not in VAPI_VOICES:
@@ -156,9 +162,11 @@ def _voice_block(lang: str, config: dict[str, Any]) -> dict[str, Any]:
     return {"provider": "vapi", "voiceId": voice_id, "speed": _voice_speed(config)}
 
 
-# Yandex STT emits unpunctuated transcripts, so onNoPunctuationSeconds is the
-# endpointing lever. These exact values were tuned on live uz calls in ScaleOps
-# (~1.3s turns) — do NOT "clean up" the magic numbers.
+# Endpointing for the bridge transcriber. The bridge emits ONE final per
+# utterance (finals-only; partials suppressed) and prefers Yandex's normalized
+# refinement, which is punctuated — so onPunctuationSeconds is the fast path and
+# onNoPunctuationSeconds only covers the raw-final fallback. Values tuned on
+# live uz calls — do NOT "clean up" the magic numbers.
 _BRIDGE_START_SPEAKING_PLAN: dict[str, Any] = {
     "waitSeconds": 0.2,
     "transcriptionEndpointingPlan": {
@@ -168,16 +176,31 @@ _BRIDGE_START_SPEAKING_PLAN: dict[str, Any] = {
     },
 }
 
-# Barge-in guard for the Yandex custom transcriber. Yandex STT finalizes an
-# utterance slightly after its last partial; without this, a late/echoed final
-# landing during the assistant's speech reads to Vapi as a barge-in and makes it
-# RESTART and re-speak the whole turn (the "agent repeats itself" bug). Requiring
-# >=2 transcribed words before an interruption filters those stray finals.
+# Barge-in guard for the Yandex custom transcriber. The bridge's finals-only
+# emission kills the late-final-mid-playback race at the source; this plan stays
+# as defense in depth: >=2 transcribed words before an interruption filters
+# 1-word echo/noise finals, and backoffSeconds debounces re-triggering.
 _BRIDGE_STOP_SPEAKING_PLAN: dict[str, Any] = {
     "numWords": 2,
     "voiceSeconds": 0.3,
     "backoffSeconds": 1.5,
 }
+
+# Emoji/pictographs reach Yandex TTS verbatim (it can't speak them) and pad the
+# greeting; strip them from spoken strings for bridge languages.
+_NON_SPEECH_RE = re.compile(
+    "["
+    "🀀-🫿"  # emoji + pictographs (supplemental planes)
+    "☀-➿"  # misc symbols + dingbats
+    "⬀-⯿"  # misc symbols and arrows
+    "️"  # variation selector-16
+    "‍"  # zero-width joiner
+    "]+"
+)
+
+
+def _strip_non_speech(text: str) -> str:
+    return re.sub(r"\s{2,}", " ", _NON_SPEECH_RE.sub("", text)).strip()
 
 
 def resolve_language_voice(
@@ -188,9 +211,9 @@ def resolve_language_voice(
     Shared by the agent payload builder and the workflow sync so both emit an
     identical Yandex bridge stack for uz/ru: English -> Vapi native voice +
     Deepgram STT; Uzbek/Russian -> custom-voice / custom-transcriber built from
-    the bridge env (secret stays server-side). Returns the three payload pieces;
-    `startSpeakingPlan` is present only for bridge languages when the bridge is
-    configured.
+    the bridge env (secret stays server-side). Returns the payload pieces; the
+    speaking plans and `modelOutputInMessagesEnabled` are present only for
+    bridge languages when the bridge is configured.
     """
     lang = language.strip().lower() if isinstance(language, str) else "en"
     if lang not in ("en", "ru", "uz"):
@@ -202,6 +225,8 @@ def resolve_language_voice(
     }
     if is_bridge_language(lang) and _bridge_configured():
         stack["startSpeakingPlan"] = _BRIDGE_START_SPEAKING_PLAN
+        stack["stopSpeakingPlan"] = _BRIDGE_STOP_SPEAKING_PLAN
+        stack["modelOutputInMessagesEnabled"] = True
     return stack
 
 
@@ -251,14 +276,19 @@ def build_vapi_assistant_payload(name: str, config: dict[str, Any]) -> dict[str,
     raw_system = str(config.get("systemPrompt") or "").strip()
     system = raw_system or _BLANK_TEMPLATE_SYSTEM
 
+    lang = _language_code(config)
+
     raw_first = str(config.get("firstMessage") or "").strip()
     first = raw_first or "Hello."
 
     max_minutes = int(config.get("maxCallMinutes") or 10)
     max_seconds = max(60, min(max_minutes * 60, 43200))
 
-    lang = _language_code(config)
     end_call = str(config.get("endCallMessage") or "").strip() or _DEFAULT_END_CALL
+    if is_bridge_language(lang):
+        # These strings are spoken by Yandex TTS, which reads emoji as garbage.
+        first = _strip_non_speech(first) or "Salom."
+        end_call = _strip_non_speech(end_call) or _DEFAULT_END_CALL
 
     safe_name = (name or "New Assistant")[:40]
 
@@ -297,12 +327,16 @@ def build_vapi_assistant_payload(name: str, config: dict[str, Any]) -> dict[str,
     ):
         payload["firstMessageMode"] = mode
 
-    # Bridge languages need the tuned endpointing plan (unpunctuated Yandex STT)
-    # and the barge-in guard (stops a late Yandex final from re-speaking the turn).
+    # Bridge languages need the tuned endpointing plan, the barge-in guard, and
+    # modelOutputInMessagesEnabled: the custom transcriber sends no
+    # assistant-channel transcripts, so without this flag Vapi commits ZERO
+    # assistant turns to the LLM history and the model re-greets every turn
+    # (the "greets multiple times" bug — confirmed in Vapi call logs).
     # English agents keep Vapi defaults — payload unchanged vs. pre-bridge builds.
     if is_bridge_language(lang) and _bridge_configured():
         payload["startSpeakingPlan"] = _BRIDGE_START_SPEAKING_PLAN
         payload["stopSpeakingPlan"] = _BRIDGE_STOP_SPEAKING_PLAN
+        payload["modelOutputInMessagesEnabled"] = True
 
     # Voicemail: when detection is on and the agent should leave a message, send
     # the message (TTS); on "hang up" omit it so Vapi ends the call on voicemail.

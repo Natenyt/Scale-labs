@@ -56,6 +56,7 @@ def test_uz_agent_uses_bridge_custom_voice_and_transcriber():
         "server": {
             "url": f"{BRIDGE_BASE}/custom-voice?voice=yulduz&role=neutral",
             "secret": SECRET,
+            "timeoutSeconds": 45,
         },
     }
     assert payload["transcriber"] == {
@@ -132,6 +133,50 @@ def test_uz_agent_has_barge_in_stop_speaking_plan():
 def test_en_agent_has_no_stop_speaking_plan():
     payload = build_vapi_assistant_payload("A", {"language": "en"})
     assert "stopSpeakingPlan" not in payload
+
+
+# --- Assistant history (modelOutputInMessagesEnabled) --------------------------
+# The custom transcriber sends no assistant-channel transcripts; without this
+# flag Vapi commits zero assistant turns and the model re-greets every turn.
+
+
+@bridge_env
+def test_uz_agent_enables_model_output_in_messages():
+    payload = build_vapi_assistant_payload("A", {"language": "uz"})
+    assert payload["modelOutputInMessagesEnabled"] is True
+
+
+@bridge_env
+def test_en_agent_omits_model_output_flag():
+    payload = build_vapi_assistant_payload("A", {"language": "en"})
+    assert "modelOutputInMessagesEnabled" not in payload
+
+
+# --- Spoken-string sanitization (bridge languages) ------------------------------
+
+
+@bridge_env
+def test_uz_first_message_emoji_stripped():
+    payload = build_vapi_assistant_payload(
+        "A", {"language": "uz", "firstMessage": "Salom! \U0001f60a Men Aziza ❤️"}
+    )
+    assert payload["firstMessage"] == "Salom! Men Aziza"
+
+
+@bridge_env
+def test_uz_emoji_only_first_message_falls_back():
+    payload = build_vapi_assistant_payload(
+        "A", {"language": "uz", "firstMessage": "\U0001f60a\U0001f44b"}
+    )
+    assert payload["firstMessage"] == "Salom."
+
+
+@bridge_env
+def test_en_first_message_left_untouched():
+    payload = build_vapi_assistant_payload(
+        "A", {"language": "en", "firstMessage": "Hi! \U0001f60a"}
+    )
+    assert payload["firstMessage"] == "Hi! \U0001f60a"
 
 
 # --- Speech speed (Yandex bridge) ---------------------------------------------
