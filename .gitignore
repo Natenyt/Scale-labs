@@ -18,6 +18,9 @@ backend/*.egg-info/
 backend/.env
 frontend/.env.local
 
+# Local MCP server config (contains Vapi Bearer token)
+.mcp.json
+
 # Local databases
 **/*.sqlite3
 backend/db.sqlite3
