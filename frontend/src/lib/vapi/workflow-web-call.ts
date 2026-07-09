@@ -1,9 +1,14 @@
 import { apiFetch } from "@/lib/api/client";
 import { hasBackendApi } from "@/lib/api/env";
 
-/** Client messages required for live workflow canvas + transcript during test calls. */
+/** Client messages required for live workflow canvas + transcript during test
+ * calls. "voice-input" carries the assistant's TTS text (the only assistant
+ * text with a customer-only custom transcriber); "conversation-update" settles
+ * the history. Without them the workflow chat shows no assistant lines. */
 export const WORKFLOW_TEST_CLIENT_MESSAGES = [
   "transcript",
+  "voice-input",
+  "conversation-update",
   "workflow.node.started",
   "status-update",
 ] as const;
@@ -14,6 +19,8 @@ export type WorkflowWebCallConfig =
 
 type WorkflowTestClientMessage =
   | "transcript"
+  | "voice-input"
+  | "conversation-update"
   | "workflow.node.started"
   | "status-update";
 
@@ -23,6 +30,8 @@ export function workflowTestStartOverrides(): {
   return {
     clientMessages: [
       "transcript",
+      "voice-input",
+      "conversation-update",
       "workflow.node.started",
       "status-update",
     ],
