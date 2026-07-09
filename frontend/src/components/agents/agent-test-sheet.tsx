@@ -10,6 +10,7 @@ import {
   SquareIcon,
 } from "lucide-react";
 
+import { useAgent } from "@/components/agents/agents-store";
 import { useAgentVoiceSession } from "@/components/agents/detail/voice-session-context";
 import { apiFetch } from "@/lib/api/client";
 import { hasBackendApi } from "@/lib/api/env";
@@ -97,6 +98,39 @@ export function AgentTestSheet({
       setLines((prev) => mergeVapiClientMessage(prev, msg));
     });
   }, [onVapiMessage]);
+
+  // Seed the greeting bubble the moment the call goes live: with a customer-only
+  // custom transcriber the firstMessage may never arrive as a client event, so
+  // the chat would otherwise stay empty until the first model turn. The merge
+  // dedups against a voice-input / conversation-update copy if one does arrive.
+  const agent = useAgent(agentRecordId);
+  const greetingSeededRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!voiceActive) {
+      greetingSeededRef.current = false;
+      return;
+    }
+    if (greetingSeededRef.current) return;
+    greetingSeededRef.current = true;
+    const greeting = (agent?.firstMessage || "").trim();
+    const mode = agent?.firstMessageMode || "assistant-speaks-first";
+    if (!greeting || mode !== "assistant-speaks-first") return;
+    setLines((prev) => {
+      if (prev.some((l) => l.streamRole === "assistant")) return prev;
+      return [
+        ...prev,
+        {
+          id: newTranscriptLineId(),
+          role: "transcript",
+          streamRole: "assistant",
+          isStreaming: false,
+          committed: greeting,
+          text: `[assistant] ${greeting}`,
+          source: "vi",
+        },
+      ];
+    });
+  }, [voiceActive, agent]);
 
   const handleOpenChange = React.useCallback(
     (next: boolean) => {

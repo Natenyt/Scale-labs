@@ -126,7 +126,10 @@ export function mergeVapiClientMessage(
     if (!input) return lines;
     const last = lines[lines.length - 1];
     // Consecutive voice-input chunks belong to the same utterance — append.
+    // Unless the bubble already covers this text (e.g. the greeting was seeded
+    // client-side at call start and Vapi then emits voice-input for it too).
     if (last && last.source === "vi" && !last.isStreaming) {
+      if (covers(last.committed || "", input)) return lines;
       const text = `${last.committed || ""} ${input}`.trim();
       return replaceLast(lines, {
         ...last,
