@@ -152,8 +152,9 @@ export function mergeVapiClientMessage(
   }
 
   // Settled history (when Vapi sends it): rebuild committed bubbles, keeping
-  // voice-input bubbles the update does not cover yet (greeting / in-flight
-  // utterance) in their original position relative to the committed block.
+  // LOCAL bubbles (voice-input assistant text, settled customer finals) the
+  // update does not cover yet in their position relative to the committed
+  // block — dropping them here made user bubbles vanish/flash between updates.
   if (t === "conversation-update") {
     const bubbles = conversationBubbles(o);
     if (bubbles.length === 0) return lines;
@@ -162,17 +163,19 @@ export function mergeVapiClientMessage(
     const firstCommittedIdx = lines.findIndex(
       (l) => l.role === "transcript" && !l.isStreaming,
     );
-    const keptVi = (predicate: (idx: number) => boolean) =>
+    const isLocal = (l: TranscriptChatLine) =>
+      l.role === "transcript" && !l.isStreaming && l.source !== "cu";
+    const keptLocal = (predicate: (idx: number) => boolean) =>
       lines.filter(
         (l, idx) =>
-          l.source === "vi" &&
+          isLocal(l) &&
           predicate(idx) &&
-          !bubbles.some((b) => b.role === "assistant" && covers(b.text, l.committed || "")),
+          !bubbles.some((b) => b.role === l.streamRole && covers(b.text, l.committed || "")),
       );
     // Greeting-style bubbles that preceded any committed content stay in front;
-    // an uncovered in-flight utterance stays at the tail.
-    const viFront = keptVi((idx) => firstCommittedIdx !== -1 && idx <= firstCommittedIdx);
-    const viTail = keptVi((idx) => firstCommittedIdx === -1 || idx > firstCommittedIdx);
+    // uncovered in-flight/latest utterances stay at the tail.
+    const viFront = keptLocal((idx) => firstCommittedIdx !== -1 && idx <= firstCommittedIdx);
+    const viTail = keptLocal((idx) => firstCommittedIdx === -1 || idx > firstCommittedIdx);
 
     const committed: TranscriptChatLine[] = bubbles.map((b, i) => ({
       id: `cu-${i}-${b.role}`,
@@ -214,6 +217,18 @@ export function mergeVapiClientMessage(
     o.transcriptType === "final" || t === "transcript[transcriptType='final']";
 
   const last = lines[lines.length - 1];
+  // Vapi can deliver the SAME final twice (as "transcript" and as
+  // "transcript[transcriptType='final']"), and a conversation-update copy of
+  // the turn may already sit last — either way, don't double the bubble.
+  if (
+    isFinal &&
+    last &&
+    !last.isStreaming &&
+    last.streamRole === role &&
+    covers(last.committed || "", body)
+  ) {
+    return lines;
+  }
   const activeLive =
     last && last.isStreaming && last.streamRole === role ? last : null;
 

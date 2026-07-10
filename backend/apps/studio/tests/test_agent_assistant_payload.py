@@ -135,21 +135,17 @@ def test_en_agent_has_no_stop_speaking_plan():
     assert "stopSpeakingPlan" not in payload
 
 
-# --- Assistant history (modelOutputInMessagesEnabled) --------------------------
-# The custom transcriber sends no assistant-channel transcripts; without this
-# flag Vapi commits zero assistant turns and the model re-greets every turn.
+# --- Assistant history ----------------------------------------------------------
+# Assistant turns are committed by the bridge's assistant-channel transcripts
+# (scale-labs-core ttsServer), NOT by modelOutputInMessagesEnabled — the flag
+# was tried and did not commit turns (artifacts kept zero assistant messages).
 
 
 @bridge_env
-def test_uz_agent_enables_model_output_in_messages():
-    payload = build_vapi_assistant_payload("A", {"language": "uz"})
-    assert payload["modelOutputInMessagesEnabled"] is True
-
-
-@bridge_env
-def test_en_agent_omits_model_output_flag():
-    payload = build_vapi_assistant_payload("A", {"language": "en"})
-    assert "modelOutputInMessagesEnabled" not in payload
+def test_no_model_output_flag_for_any_language():
+    for lang in ("uz", "ru", "en"):
+        payload = build_vapi_assistant_payload("A", {"language": lang})
+        assert "modelOutputInMessagesEnabled" not in payload
 
 
 # --- Spoken-string sanitization (bridge languages) ------------------------------

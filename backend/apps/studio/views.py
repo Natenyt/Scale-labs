@@ -246,11 +246,7 @@ class WorkflowViewSet(ExternalIdLookupMixin, viewsets.ModelViewSet):
             stack = resolve_language_voice(language, voice_id, voice_role)
             payload["voice"] = stack["voice"]
             payload["transcriber"] = stack["transcriber"]
-            for key in (
-                "startSpeakingPlan",
-                "stopSpeakingPlan",
-                "modelOutputInMessagesEnabled",
-            ):
+            for key in ("startSpeakingPlan", "stopSpeakingPlan"):
                 if key in stack:
                     payload[key] = stack[key]
         # Persist the language snapshot alongside the sync so a reload rehydrates

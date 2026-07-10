@@ -226,7 +226,6 @@ def resolve_language_voice(
     if is_bridge_language(lang) and _bridge_configured():
         stack["startSpeakingPlan"] = _BRIDGE_START_SPEAKING_PLAN
         stack["stopSpeakingPlan"] = _BRIDGE_STOP_SPEAKING_PLAN
-        stack["modelOutputInMessagesEnabled"] = True
     return stack
 
 
@@ -327,16 +326,17 @@ def build_vapi_assistant_payload(name: str, config: dict[str, Any]) -> dict[str,
     ):
         payload["firstMessageMode"] = mode
 
-    # Bridge languages need the tuned endpointing plan, the barge-in guard, and
-    # modelOutputInMessagesEnabled: the custom transcriber sends no
-    # assistant-channel transcripts, so without this flag Vapi commits ZERO
-    # assistant turns to the LLM history and the model re-greets every turn
-    # (the "greets multiple times" bug — confirmed in Vapi call logs).
+    # Bridge languages need the tuned endpointing plan and the barge-in guard.
+    # Assistant turns are committed by the BRIDGE, which reports each TTS text
+    # as a channel:"assistant" transcriber final (scale-labs-core ttsServer);
+    # modelOutputInMessagesEnabled was tried instead and did NOT commit turns —
+    # call artifacts still had zero assistant messages and one merged user
+    # message (2026-07-10). Do not re-add the flag; the transcript is the
+    # mechanism Vapi honors with a custom transcriber.
     # English agents keep Vapi defaults — payload unchanged vs. pre-bridge builds.
     if is_bridge_language(lang) and _bridge_configured():
         payload["startSpeakingPlan"] = _BRIDGE_START_SPEAKING_PLAN
         payload["stopSpeakingPlan"] = _BRIDGE_STOP_SPEAKING_PLAN
-        payload["modelOutputInMessagesEnabled"] = True
 
     # Voicemail: when detection is on and the agent should leave a message, send
     # the message (TTS); on "hang up" omit it so Vapi ends the call on voicemail.

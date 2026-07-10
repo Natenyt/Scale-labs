@@ -65,14 +65,14 @@ def test_resolve_uz_uses_bridge_stack():
             "onNumberSeconds": 0.2,
         },
     }
-    # Barge-in guard + assistant-history flag must ride along on the workflow
-    # path too — this was missing and left workflow uz/ru calls unguarded.
+    # Barge-in guard must ride along on the workflow path too — this was
+    # missing and left workflow uz/ru calls unguarded.
     assert stack["stopSpeakingPlan"] == {
         "numWords": 2,
         "voiceSeconds": 0.3,
         "backoffSeconds": 1.5,
     }
-    assert stack["modelOutputInMessagesEnabled"] is True
+    assert "modelOutputInMessagesEnabled" not in stack
 
 
 @bridge_env
@@ -151,7 +151,6 @@ def test_sync_uz_injects_bridge_voice(mock_create, auth_client, org):
     assert sent["transcriber"]["provider"] == "custom-transcriber"
     assert sent["startSpeakingPlan"]["waitSeconds"] == 0.2
     assert sent["stopSpeakingPlan"]["numWords"] == 2
-    assert sent["modelOutputInMessagesEnabled"] is True
     # Snapshot persisted for rehydration.
     wf.refresh_from_db()
     assert (wf.language, wf.voice_id, wf.voice_role) == ("uz", "yulduz", "whisper")
